@@ -16,6 +16,7 @@ export type ServerSocketEvent = {
     connect: (socket: Socket) => void;
     close: (server: Server) => void;
     listening: (Server: Server) => void;
+    data: (buf: Buffer) => void;
     message: (client: ClientSocket, message: SocketMessage) => void;
 };
 
@@ -190,6 +191,11 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         // 处理绑定事件
         client.handle('socket:bind', this.handleClientBindEvent.bind(this, tempSocketId, client));
 
+        // 消息通知
+        client.on('data', (buf) => {
+            this.emit('data', buf);
+        });
+
         // 注册事件
         this.serverHandleActionMap.forEach((value, action) => {
             client.response(action, value.action);
@@ -197,6 +203,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
         // 处理消息
         client.on('message', (...args) => {
+            this.log('[server-message]', '服务端收到数据', args[0].requestId);
             this.emit('message', client, ...args);
         });
     }

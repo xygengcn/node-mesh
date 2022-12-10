@@ -5,7 +5,8 @@
     "scripts": {
         "build": "tsc --project tsconfig.json && tsc-alias -p tsconfig.json",
         "test": "env-cmd -r .env.js -e test mocha test/**.test.ts --timeout 5000",
-        "test:dev": "env-cmd -r .env.js -e development mocha test/**.test.ts --timeout 15000"
+        "test:dev": "env-cmd -r .env.js -e development mocha test/**.test.ts --timeout 15000",
+        "pref": "env-cmd -r .env.js -e test mocha test/pref.test.ts -t 5000"
     },
     "homepage": "https://xygeng.cn",
     "keywords": [
@@ -31,6 +32,7 @@
         "typescript": "^4.5.3"
     },
     "dependencies": {
+        "amp": "^0.3.1",
         "amp-message": "^0.1.2",
         "eventemitter3": "^5.0.0"
     },

@@ -3,7 +3,7 @@ import { uuid } from '@/utils';
 import Message from 'amp-message';
 import net, { Socket } from 'net';
 import Emitter from '../emitter';
-
+import { Stream } from 'amp';
 /**
  * 客户端
  */
@@ -169,7 +169,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                 return new Promise((resolve, reject) => {
                     this.sendMessage(action, { params: data }, (error, result) => {
                         if (error) {
-                            reject(result);
+                            reject(error);
                         } else {
                             resolve(result);
                         }
@@ -246,7 +246,14 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         this.log('[write]', this.status, ...args);
         if (this.socket && (this.status === 'online' || this.status === 'binding')) {
             const message = new Message(args);
-            this.socket.write(message.toBuffer());
+            this.socket.write(message.toBuffer(), (e) => {
+                if (e) {
+                    this.debug('[write]', '发送失败', e, ...args);
+                    this.emit('error', e || Error('write error'));
+                } else {
+                    this.success('[write]');
+                }
+            });
         }
     }
 
@@ -367,7 +374,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                 }
                 // 成功登录
                 this.status = 'online';
-                this.success('online', this.status);
+                this.success('[online]', this.options.id);
                 this.emit('online', this.socket);
             });
         }
@@ -378,19 +385,22 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      */
     private listenSocketEvent() {
         this.log('[listenSocketEvent] 开始绑定事件');
+
         // 接收来自服务端的信息
-        this.socket.on('data', (buf) => {
+        const stream = new Stream();
+        this.socket.pipe(stream);
+        stream.on('data', (buf) => {
+            // 解析数据流
+            const message = new Message(buf);
             // 日志
-            this.log('[data]', '收到消息');
+            this.log('[data]', '收到消息: ', message.args.length);
 
             // 外发
             this.emit('data', buf);
 
-            const message = new Message(buf);
-
             // 在线状态再触发，是固定消息模式
             if (this.status === 'online' && typeof message === 'object' && message?.args?.[0]?.action) {
-                this.emit('message', message?.args[0]);
+                this.emit('message', message.args[0]);
             }
             // 处理事件
             this.handleSocketDataActionAndResponse(message?.args[0]);
