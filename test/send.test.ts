@@ -3,8 +3,6 @@ import { ClientSocket, ServerSocket } from '../src/index';
 
 const server = new ServerSocket({ port: 3001, host: '0.0.0.0', serverId: 'server1' });
 
-const client = new ClientSocket({ port: 3001, host: '0.0.0.0', clientId: 'client1', serverId: 'server1' });
-
 server.start();
 
 server.on('error', (error) => {
@@ -14,16 +12,34 @@ server.on('error', (error) => {
 describe('客户端和服务端的发消息测试', () => {
     after(() => {
         server.stop();
-        client.disconnect();
     });
 
-    describe('正常发送接收', () => {
-        it('单项发送', (done) => {
+    describe('单向发送', () => {
+        it('客户端正常发送，服务端正常接收', (done) => {
+            const client = new ClientSocket({ port: 3001, host: '0.0.0.0', id: 'test-client-send', targetId: 'server1' });
             client.connect();
             client.on('online', () => {
-                client.send('test', '这是一句话');
-                server.once('message', (client, message) => {
-                    assert.equal(message.params, '这是一句话');
+                client.request('test', 'helloworld');
+                server.once('message', (c, message) => {
+                    assert.equal(message.params, 'helloworld');
+                    client.disconnect();
+                    done();
+                });
+            });
+        });
+    });
+
+    describe('双向测试', () => {
+        it('客户端request，服务端response', (done) => {
+            const client = new ClientSocket({ port: 3001, host: '0.0.0.0', id: 'test-server-response', targetId: 'server1' });
+            server.response('action/test', (parmas) => {
+                return parmas + '0';
+            });
+            client.connect();
+            client.on('online', () => {
+                client.request('action/test', '123456789', (error, body) => {
+                    assert.equal(body, '1234567890');
+                    client.disconnect();
                     done();
                 });
             });

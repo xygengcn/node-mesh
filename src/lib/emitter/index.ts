@@ -18,14 +18,6 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
     }
 
     /**
-     * 设置namespace
-     * @param namespace
-     */
-    public setNamespace(namespace: string) {
-        this.namespace = namespace;
-    }
-
-    /**
      * 日志log
      * @param title
      * @param args
@@ -67,8 +59,8 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param listener
      * @returns
      */
-    public on<T extends EventEmitter.EventNames<K>>(event: T, listener: EventEmitter.EventListener<K, T>);
-    public on(event: string, listener: (...args: any[]) => void);
+    public on(event: 'debug:log' | 'debug:success' | 'debug:error', listener: (title: string, ...args: any[]) => void): this;
+    public on<T extends EventEmitter.EventNames<K>>(event: T, listener: EventEmitter.EventListener<K, T>): this;
     public on(event, listener) {
         this.log('Evnet:on]', event);
         return super.on(event, listener);
@@ -80,12 +72,11 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param listener
      * @returns
      */
-
+    public once(event: 'debug:log' | 'debug:success' | 'debug:error', listener: (title: string, ...args: any[]) => void);
     public once<T extends EventEmitter.EventNames<K>>(event: T, listener: EventEmitter.EventListener<K, T>);
-    public once(event: string, listener: (...args: any[]) => void);
     public once(event, listener) {
         this.log('[Event:once]', event);
-        return super.on(event, listener);
+        return super.once(event, listener);
     }
 
     /**
@@ -94,9 +85,8 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param listener
      * @returns
      */
-    public emit(event: 'debug:log' | 'debug:success' | 'debug:error', title: string, ...args: any[]);
-    public emit<T extends EventEmitter.EventNames<K>>(event: T, ...data: EventEmitter.EventArgs<K, T>);
-    public emit(event: string, ...data: any[]);
+    public emit(event: 'debug:log' | 'debug:success' | 'debug:error', title: string, ...args: any[]): boolean;
+    public emit<T extends EventEmitter.EventNames<K>>(event: T, ...data: EventEmitter.EventArgs<K, T>): boolean;
     public emit(event, ...data: any) {
         return super.emit(event, ...data);
     }
@@ -107,8 +97,8 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param listener
      * @returns
      */
-    public off<T extends EventEmitter.EventNames<K>>(event?: T, listener?: EventEmitter.EventListener<K, T>);
-    public off(event: string, listener: (...args: any[]) => void);
+    public off(event: 'debug:log' | 'debug:success' | 'debug:error', listener: (title: string, ...args: any[]) => void): this;
+    public off<T extends EventEmitter.EventNames<K>>(event?: T, listener?: EventEmitter.EventListener<K, T>): this;
     public off(eventName, listener) {
         if (eventName && listener) {
             return super.off(eventName, listener);

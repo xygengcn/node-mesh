@@ -1,6 +1,7 @@
-import ClientSocket, { ClientSocketBindOptions, ClientSocketBindStatus, SocketMessage } from './client';
+import ClientSocket from './client';
 import Emitter from '../emitter';
 import net, { Server, Socket } from 'net';
+import { SocketMessage, ClientSocketBindOptions, ClientSocketBindStatus, SocketResponseAction } from '@/typings/socket';
 
 /**
  * 服务端状态
@@ -35,7 +36,6 @@ export interface ServerSocketClient {
     client: ClientSocket;
     status: 'bind' | 'unbind';
 }
-
 /**
  * 服务端
  */
@@ -50,10 +50,15 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     private options: ServerSocketOptions = { port: 31000, host: '0.0.0.0', serverId: 'Server' };
 
     // 客户端
-    private clients: Map<string, ServerSocketClient> = new Map();
+    private clientsMap: Map<string, ServerSocketClient> = new Map();
 
+    // 记录注册的函数 response：是否回调给客户端
+    private serverHandleActionMap: Map<string, { action: SocketResponseAction; response: boolean }> = new Map();
+
+    // 构造函数
     constructor(options: ServerSocketOptions) {
-        super(options.serverId);
+        const namespace = `serverSocket-${options.serverId}`;
+        super(namespace);
         this.options = Object.assign(this.options, options || {});
         this.status = 'waiting';
         this.createServer();
@@ -67,7 +72,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         this.socket.close();
         this.status = 'stop';
         // 停止后把所有的客户端断开
-        this.clients.forEach((c) => c.client.disconnect());
+        this.clientsMap.forEach((c) => c.client.disconnect());
     }
 
     /**
@@ -82,20 +87,29 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     }
 
     /**
-     * 官博
-     * @param data
+     * 回答事件
+     * @param action
+     * @param callback
      */
-    public broadcast(...data: any[]) {}
+    public response(action: string, callback: SocketResponseAction) {
+        this.serverHandleActionMap.set(action, { action: callback, response: true });
+    }
+
+    // /**
+    //  * 移除回答事件
+    //  * @param action
+    //  */
+    // public removeResponse(action: string) {
+    //     this.serverHandleActionMap.delete(action);
+    // }
 
     /**
-     * 设置密钥
+     * 重新设置配置
      *
-     * 之前连接的会重新校验
-     *
-     * @param secret
+     * @param options
      */
-    public setSerct(secret: string) {
-        Object.assign(this.options, { secret });
+    public setDefaultOptions(options: Partial<Pick<ServerSocketOptions, 'secret'>>) {
+        Object.assign(this.options, options || {});
     }
 
     /**
@@ -107,7 +121,9 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         this.socket.listen(this.options.port);
     }
 
-    // 建立服务器
+    /**
+     * 建立服务器
+     */
     private createServer() {
         // 没有端口
         if (!this.options.port) {
@@ -115,88 +131,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         }
 
         // 创建服务器
-        this.socket = net.createServer({ keepAlive: true }, (socket: Socket) => {
-            // 临时id，绑定成功就会被移除
-            const tempSocketId = `${this.options.serverId}-clientIndex-${this.clients.size}`;
-
-            this.log('[connnect] 监听到客户端', socket.address(), socket.localAddress, tempSocketId);
-
-            this.emit('connect', socket);
-
-            const addressInfo = socket.address() as net.AddressInfo;
-            // 建立客户端
-            const client = new ClientSocket(
-                {
-                    port: addressInfo.port,
-                    host: addressInfo.address,
-                    type: 'server',
-                    retry: false,
-                    clientId: '',
-                    serverId: this.options.serverId
-                },
-                socket
-            );
-
-            // 重新设置命名空间
-            client.setNamespace(tempSocketId);
-
-            // 临时绑定
-            this.clients.set(tempSocketId, { status: 'unbind', client });
-
-            // @todo 重新校验密钥
-
-            // 处理绑定事件
-            client.handleOnce('socket:bind', (bind: ClientSocketBindOptions) => {
-                // 生成socketId
-                const socketId = `${bind.clientId}-${this.options.serverId}`;
-
-                this.log('[server-bind] 开始绑定服务端', bind);
-
-                // 验证身份
-                if (bind.serverId === this.options.serverId) {
-                    if (!this.options.secret || this.options.secret === bind.secret) {
-                        // 绑定成功
-                        this.clients.set(socketId, { status: 'bind', client });
-                        client.status = 'online';
-                        this.success('[server-bind] 绑定服务端成功', bind);
-
-                        // 移除临时绑定
-                        client.setNamespace(socketId);
-                        this.clients.delete(tempSocketId);
-                        this.log('[socketId] socketId切换', `由${tempSocketId}正式切换到${socketId}`);
-
-                        return {
-                            ...bind,
-                            status: ClientSocketBindStatus.success,
-                            socketId,
-                            serverId: this.options.serverId
-                        };
-                    }
-                    this.debug('[server-bind] auth验证失败', bind, this.options);
-
-                    return {
-                        ...bind,
-                        status: ClientSocketBindStatus.authError,
-                        socketId,
-                        serverId: this.options.serverId
-                    };
-                }
-
-                // 返回失败信息
-                this.debug('[server-bind] serverID验证失败', bind);
-                return {
-                    ...bind,
-                    status: ClientSocketBindStatus.error,
-                    socketId,
-                    serverId: this.options.serverId
-                };
-            });
-
-            // 处理消息
-            client.on('message', (...args) => {
-                this.emit('message', client, ...args);
-            });
-        });
+        this.socket = net.createServer({ keepAlive: true }, this.handleClientConnect.bind(this));
 
         //设置监听时的回调函数
         this.socket.on('listening', () => {
@@ -220,5 +155,100 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
             this.status = 'stop';
             this.emit('error', e);
         });
+    }
+
+    /**
+     * 处理客户端事件
+     * @param socket Socket
+     */
+
+    private handleClientConnect(socket: Socket) {
+        // 临时id，绑定成功就会被移除
+        const tempSocketId = `${this.options.serverId}-clientIndex-${this.clientsMap.size}`;
+
+        this.log('[connnect] 监听到客户端', socket.address(), socket.localAddress, tempSocketId);
+
+        this.emit('connect', socket);
+
+        const addressInfo = socket.address() as net.AddressInfo;
+        // 建立客户端
+        const client = new ClientSocket(
+            {
+                port: addressInfo.port,
+                host: addressInfo.address,
+                type: 'server',
+                retry: false,
+                id: this.options.serverId,
+                targetId: ''
+            },
+            socket
+        );
+
+        // 临时绑定
+        this.clientsMap.set(tempSocketId, { status: 'unbind', client });
+
+        // 处理绑定事件
+        client.handle('socket:bind', this.handleClientBindEvent.bind(this, tempSocketId, client));
+
+        // 注册事件
+        this.serverHandleActionMap.forEach((value, action) => {
+            client.response(action, value.action);
+        });
+
+        // 处理消息
+        client.on('message', (...args) => {
+            this.emit('message', client, ...args);
+        });
+    }
+
+    /**
+     * 处理客户端绑定事件
+     * @param tempSocketId
+     * @param bind
+     * @returns
+     */
+    private handleClientBindEvent(tempSocketId: string, client: ClientSocket, bind: ClientSocketBindOptions): ClientSocketBindOptions {
+        // 生成socketId
+        const socketId = `${bind.clientId}-${this.options.serverId}`;
+
+        this.log('[server-bind] 开始绑定服务端', 'socketId: ', socketId, bind, this.options);
+
+        // 验证身份
+        if (bind.serverId === this.options.serverId) {
+            if (!this.options.secret || this.options.secret === bind.secret) {
+                // 绑定成功
+                this.clientsMap.set(socketId, { status: 'bind', client });
+                client.status = 'online';
+                this.success('[server-bind] 绑定服务端成功', bind);
+
+                // 绑定目标id
+                client.setDefaultOptions({ targetId: bind.clientId });
+
+                // 移除临时绑定
+                this.clientsMap.delete(tempSocketId);
+                this.log('[socketId] socketId切换', `由${tempSocketId}正式切换到${socketId}`);
+
+                return {
+                    ...bind,
+                    status: ClientSocketBindStatus.success,
+                    serverId: this.options.serverId
+                };
+            }
+            this.debug('[server-bind] auth验证失败', bind, this.options);
+
+            return {
+                ...bind,
+                status: ClientSocketBindStatus.authError,
+                serverId: this.options.serverId
+            };
+        }
+
+        // 返回失败信息
+        this.debug('[server-bind] serverID验证失败', bind, this.options.serverId);
+        return {
+            ...bind,
+            status: ClientSocketBindStatus.error,
+            serverId: this.options.serverId
+        };
     }
 }
