@@ -26,7 +26,7 @@ export interface ClientSocketEvent extends NetSocketEvent {
     online: (socket: Socket) => void; // 上线成功
     reconnect: (socket: Socket) => void; // 开始重连
     disconnect: (socket: Socket) => void; // 开始重连
-    requestCallback: (message: SocketMessage) => void; // 请求收到回调
+    requestCallback: (error: null | Error, message: SocketMessage) => void; // 请求收到回调
 }
 
 /**

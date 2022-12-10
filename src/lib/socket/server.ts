@@ -1,7 +1,7 @@
-import ClientSocket from './client';
-import Emitter from '../emitter';
+import { ClientSocketBindOptions, ClientSocketBindStatus, SocketMessage, SocketResponseAction } from '@/typings/socket';
 import net, { Server, Socket } from 'net';
-import { SocketMessage, ClientSocketBindOptions, ClientSocketBindStatus, SocketResponseAction } from '@/typings/socket';
+import Emitter from '../emitter';
+import ClientSocket from './client';
 
 /**
  * 服务端状态

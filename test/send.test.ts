@@ -30,7 +30,7 @@ describe('客户端和服务端的发消息测试', () => {
     });
 
     describe('双向测试', () => {
-        it('客户端request，服务端response', (done) => {
+        it('客户端request，服务端response, 测试callback', (done) => {
             const client = new ClientSocket({ port: 3001, host: '0.0.0.0', id: 'test-server-response', targetId: 'server1' });
             server.response('action/test', (parmas) => {
                 return parmas + '0';
@@ -39,6 +39,20 @@ describe('客户端和服务端的发消息测试', () => {
             client.on('online', () => {
                 client.request('action/test', '123456789', (error, body) => {
                     assert.equal(body, '1234567890');
+                    client.disconnect();
+                    done();
+                });
+            });
+        });
+        it('客户端request，服务端response, 测试promise', (done) => {
+            const client = new ClientSocket({ port: 3001, host: '0.0.0.0', id: 'test-server-response', targetId: 'server1' });
+            server.response('action/test', (parmas) => {
+                return parmas + '0';
+            });
+            client.connect();
+            client.on('online', () => {
+                client.request('action/test', '123456789').then((result) => {
+                    assert.equal(result, '1234567890');
                     client.disconnect();
                     done();
                 });

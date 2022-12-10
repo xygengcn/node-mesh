@@ -1,9 +1,8 @@
+import { ClientSocketBindOptions, ClientSocketBindStatus, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketMessage, SocketResponseAction } from '@/typings/socket';
 import { uuid } from '@/utils';
+import Message from 'amp-message';
 import net, { Socket } from 'net';
 import Emitter from '../emitter';
-import _debug from 'debug';
-import Message from 'amp-message';
-import { ClientSocketEvent, ClientSocketStatus, ClientSocketOptions, SocketResponseAction, ClientSocketBindOptions, ClientSocketBindStatus, SocketMessage } from '@/typings/socket';
 
 /**
  * 客户端
@@ -155,16 +154,38 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @param data
      * @param callback
      */
-    public request<T extends any = any>(action: string, data?: T, callback?: (error: Error | null, ...result: any[]) => void) {
+    public request<T extends any = any>(action: string, data: string | number | object, callback: (error: Error | null, result: T) => void): void;
+    public request<T = any>(action: string, data: string | number | object): Promise<T>;
+    public request(action, data, callback?): any {
+        // 日志
         this.log('[request]', this.status);
-        if (typeof data === 'function') {
-            callback === data;
-            data = undefined;
-        }
+
+        // 正常情况,没有callback返回promise
         if (this.socket && this.status === 'online') {
-            this.sendMessage(action, { params: data }, callback);
+            if (typeof callback === 'function') {
+                this.sendMessage(action, { params: data }, callback);
+                return;
+            } else {
+                return new Promise((resolve, reject) => {
+                    this.sendMessage(action, { params: data }, (error, result) => {
+                        if (error) {
+                            reject(result);
+                        } else {
+                            resolve(result);
+                        }
+                    });
+                });
+            }
+        }
+
+        this.debug('[request]', '发送失败', 'socket状态: ', this.status);
+
+        // 返回失败
+        this.emit('error', new Error("Socket isn't connect !"));
+        if (typeof callback === 'function') {
+            callback(Error("Socket isn't connect !"));
         } else {
-            this.emit('error', new Error("Socket isn't connect !"));
+            return Promise.reject(Error("Socket isn't connect !"));
         }
     }
 
@@ -213,7 +234,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @param action
      * @param callback
      */
-    public subscribe(action: string, callback: SocketResponseAction<void>) {
+    public subscribe(action: string, callback: SocketResponseAction<void>): void {
         this.clientHandleActionMap.set(action, { action: callback, once: false });
     }
 
@@ -221,7 +242,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 发送消息
      * @param args
      */
-    public write(...args: any[]) {
+    public write(...args: any[]): void {
         this.log('[write]', this.status, ...args);
         if (this.socket && (this.status === 'online' || this.status === 'binding')) {
             const message = new Message(args);
@@ -254,7 +275,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @param args
      */
     private sendMessage(action: string, message: Partial<SocketMessage>, callback: false);
-    private sendMessage(action: string, message: Partial<SocketMessage>, callback?: (error: Error | null, ...result: any[]) => void);
+    private sendMessage(action: string, message: Partial<SocketMessage>, callback: (error: Error | null, ...result: any[]) => void);
     private sendMessage(action, message, callback) {
         if (this.socket) {
             // 请求时间
@@ -366,13 +387,13 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             this.emit('data', buf);
 
             const message = new Message(buf);
-            // 处理事件
-            this.handleSocketDataActionAndResponse(message?.args[0]);
 
             // 在线状态再触发，是固定消息模式
             if (this.status === 'online' && typeof message === 'object' && message?.args?.[0]?.action) {
                 this.emit('message', message?.args[0]);
             }
+            // 处理事件
+            this.handleSocketDataActionAndResponse(message?.args[0]);
         });
 
         // 有错误发生调用的事件
@@ -459,7 +480,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             this.log('[requestCallback]', '消息回调', message, 'options: ', this.options);
 
             // 消息回调
-            this.emit('requestCallback', message);
+            this.emit('requestCallback', null, message);
 
             // 触发请求回调
             this.emit(message.requestId as any, message.error, message.body);
