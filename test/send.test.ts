@@ -20,7 +20,7 @@ describe('客户端和服务端的发消息测试', () => {
             client.connect();
             client.on('online', () => {
                 client.request('test', 'helloworld');
-                server.once('message', (c, message) => {
+                server.once('message', (message) => {
                     assert.equal(message.params, 'helloworld');
                     client.disconnect();
                     done();

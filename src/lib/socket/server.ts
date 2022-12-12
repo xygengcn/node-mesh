@@ -17,7 +17,7 @@ export type ServerSocketEvent = {
     close: (server: Server) => void;
     listening: (Server: Server) => void;
     data: (buf: Buffer) => void;
-    message: (client: ClientSocket, message: SocketMessage) => void;
+    message: (message: SocketMessage, client: ClientSocket) => void;
 };
 
 /**
@@ -152,7 +152,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
         //设置出错时的回调函数
         this.socket.on('error', (e) => {
-            this.debug('[error]', e);
+            this.logError('[error]', e);
             this.status = 'stop';
             this.emit('error', e);
         });
@@ -202,9 +202,9 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         });
 
         // 处理消息
-        client.on('message', (...args) => {
-            this.log('[server-message]', '服务端收到数据', args[0].requestId);
-            this.emit('message', client, ...args);
+        client.on('message', (msg) => {
+            this.log('[server-message]', '服务端收到数据: ', msg?.requestId, 'action:', msg?.action);
+            this.emit('message', msg, client);
         });
     }
 
@@ -241,7 +241,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
                     serverId: this.options.serverId
                 };
             }
-            this.debug('[server-bind] auth验证失败', bind, this.options);
+            this.logError('[server-bind] auth验证失败', bind, this.options);
 
             return {
                 ...bind,
@@ -251,7 +251,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         }
 
         // 返回失败信息
-        this.debug('[server-bind] serverID验证失败', bind, this.options.serverId);
+        this.logError('[server-bind] serverID验证失败', bind, this.options.serverId);
         return {
             ...bind,
             status: ClientSocketBindStatus.error,

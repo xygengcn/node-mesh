@@ -150,6 +150,10 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
     /**
      * 请求消息
+     *
+     * @todo 先查找本地有没有注册，上层实现
+     *
+     *
      * @param action
      * @param data
      * @param callback
@@ -178,7 +182,9 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             }
         }
 
-        this.debug('[request]', '发送失败', 'socket状态: ', this.status);
+        // 错误处理
+
+        this.logError('[request]', '发送失败', 'socket状态: ', this.status);
 
         // 返回失败
         this.emit('error', new Error("Socket isn't connect !"));
@@ -243,12 +249,12 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @param args
      */
     public write(...args: any[]): void {
-        this.log('[write]', this.status, ...args);
+        this.debug('[write]', this.status, ...args);
         if (this.socket && (this.status === 'online' || this.status === 'binding')) {
             const message = new Message(args);
             this.socket.write(message.toBuffer(), (e) => {
                 if (e) {
-                    this.debug('[write]', '发送失败', e, ...args);
+                    this.logError('[write]', '发送失败', e, ...args);
                     this.emit('error', e || Error('write error'));
                 } else {
                     this.success('[write]');
@@ -295,7 +301,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             const msgType: SocketMessage['type'] = typeof callback === 'boolean' && callback === false ? 'publish' : 'request';
 
             // log
-            this.log('[sendMessage]', '发出消息', requestId, '消息类型', msgType);
+            this.log('[sendMessage]', '发出消息: ', requestId, '消息类型: ', msgType);
 
             // 存在回调
             if (callback && typeof callback === 'function') {
@@ -351,7 +357,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 绑定服务端，此动作在客户端执行
      */
     private bindServer(content: ClientSocketBindOptions) {
-        this.log('[bindServer]', '开始绑定验证服务端', this.status, content);
+        this.debug('[bindServer]', '开始绑定验证服务端', this.status, content);
         if (this.options.type === 'server') {
             throw new Error('server 不存在 bind 方法');
         }
@@ -364,11 +370,11 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                 this.emit('afterBind', result, this.socket);
 
                 // 日志
-                this.log('[afterBind] ', this.status, result, error);
+                this.log('[afterBind]', 'socket status: ', this.status, 'result status: ', result.status, 'error: ', error);
 
                 // 绑定失败
                 if (error || result.status !== ClientSocketBindStatus.success) {
-                    this.log('[bind:error] ', this.status, result, error);
+                    this.logError('[bind:error] ', this.status, result, error);
                     this.disconnect(error || new Error('Client bind error', { cause: { result, error } }));
                     return;
                 }
@@ -393,14 +399,17 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             // 解析数据流
             const message = new Message(buf);
             // 日志
-            this.log('[data]', '收到消息: ', message.args.length);
+            this.debug('[data]', '收到消息: ', message.args.length);
 
             // 外发
             this.emit('data', buf);
 
+            const msg = message?.args?.[0];
+
             // 在线状态再触发，是固定消息模式
-            if (this.status === 'online' && typeof message === 'object' && message?.args?.[0]?.action) {
-                this.emit('message', message.args[0]);
+            if (this.status === 'online' && typeof message === 'object' && msg?.action && msg?.requestId) {
+                this.log('[message]', 'requestId', msg?.requestId, 'action', msg?.action);
+                this.emit('message', msg);
             }
             // 处理事件
             this.handleSocketDataActionAndResponse(message?.args[0]);
@@ -409,7 +418,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         // 有错误发生调用的事件
         this.socket.on('error', (e: Error & { code: string }) => {
             // 日志
-            this.debug('[error]', e);
+            this.logError('[error]', e);
             this.status = 'error';
             this.emit('error', e);
 
@@ -482,12 +491,12 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      */
     private async handleSocketDataActionAndResponse(message: SocketMessage) {
         // log
-        this.log('[handleSocketDataActionAndResponse]', '处理来自对方的数据', message);
+        this.debug('[handleSocketDataActionAndResponse]', '处理来自对方的数据', message, 'options: ', this.options);
 
         // 自己发出request请求，别人回答了，收到回调 如果是在线状态需要校验targetId
         if (message && typeof message === 'object' && message.type === 'response' && message.action && (this.status === 'online' ? message.targetId === this.options.id : true)) {
             // 日志
-            this.log('[requestCallback]', '消息回调', message, 'options: ', this.options);
+            this.log('[requestCallback]', '消息回调: ', message.requestId);
 
             // 消息回调
             this.emit('requestCallback', null, message);
@@ -510,7 +519,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             const event = this.clientHandleActionMap.get(message.action);
 
             // 存在回调
-            this.log('[handleSocketAction]', '开始处理回调', message, 'event: ', event);
+            this.log('[handleSocketAction]', '开始处理回调: ', message.requestId, 'event: ', !!event);
 
             // 结果
             let body = null;
@@ -533,6 +542,8 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                 }
             }
 
+            this.log('[handleSocketAction]', '回调结果: ', message.requestId, 'error: ', !!error);
+
             // 处理订阅不返回事件
             const responseMessage: SocketMessage<any, any> = {
                 requestId: message.requestId,
@@ -551,7 +562,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         }
 
         // 普通消息，不处理
-        this.log('[handleSocketAction] 不处理', message, 'options: ', this.options);
+        this.log('[handleSocketAction]', '不处理', message.requestId);
     }
 
     /**

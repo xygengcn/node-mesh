@@ -1,4 +1,4 @@
-import { blueColor, cyanColor, error, log, success } from '@/utils/debug';
+import { blueColor, cyanColor, debug, error, log, success } from '@/utils/debug';
 import EventEmitter from 'eventemitter3';
 
 /**
@@ -19,37 +19,57 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
 
     /**
      * 日志log
+     *
+     * level 1
      * @param title
      * @param args
      */
     public log(title: string, ...args: any[]) {
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
-        process.env.NODE_ENV === 'development' && log(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
+        Number(process.env.DEBUG_LEVEL || 0) <= 1 && log(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
         this.emit('debug:log', title, ...args);
     }
 
     /**
-     * 错误日志log
+     * debug日志log
+     *
+     * level 0
      * @param title
      * @param args
      */
     public debug(title: string, ...args: any[]) {
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
-        process.env.NODE_ENV === 'development' && error(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
+        Number(process.env.DEBUG_LEVEL || 0) <= 0 && debug(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
+        this.emit('debug:debug', title, ...args);
+    }
+
+    /**
+     * 错误日志log
+     *
+     * level 3
+     * @param title
+     * @param args
+     */
+    public logError(title: string, ...args: any[]) {
+        const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
+        this.lastConoleLogTime = new Date().getTime();
+        Number(process.env.DEBUG_LEVEL || 0) <= 3 && error(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
         this.emit('debug:error', title, ...args);
     }
 
     /**
      * 成功日志log
+     *
+     * level 2
      * @param title
      * @param args
      */
     public success(title: string, ...args: any[]) {
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
-        process.env.NODE_ENV === 'development' && success(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
+        Number(process.env.DEBUG_LEVEL || 0) <= 2 && success(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
         this.emit('debug:success', title, ...args);
     }
 
@@ -85,7 +105,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param listener
      * @returns
      */
-    public emit(event: 'debug:log' | 'debug:success' | 'debug:error', title: string, ...args: any[]): boolean;
+    public emit(event: 'debug:log' | 'debug:success' | 'debug:error' | 'debug:debug', title: string, ...args: any[]): boolean;
     public emit<T extends EventEmitter.EventNames<K>>(event: T, ...data: EventEmitter.EventArgs<K, T>): boolean;
     public emit(event, ...data: any) {
         return super.emit(event, ...data);

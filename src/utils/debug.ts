@@ -19,7 +19,7 @@ export function cyanColor(text: string) {
 }
 
 /**
- * 日志打印
+ * 日志打印 黄色
  * @param title
  * @param args
  */
@@ -28,7 +28,16 @@ export function log(title: string, ...args: any[]) {
 }
 
 /**
- * 错误打印
+ * 日志打印 青色
+ * @param title
+ * @param args
+ */
+export function debug(title: string, ...args: any[]) {
+    console.log(cyanColor(`[log]`), colors.yellow(title), ...args);
+}
+
+/**
+ * 错误打印 红色
  * @param title
  * @param args
  */
@@ -37,7 +46,7 @@ export function error(title: string, ...args: any[]) {
 }
 
 /**
- * 成功打印
+ * 成功打印 绿色
  * @param title
  * @param args
  */
