@@ -1,10 +1,10 @@
 {
     "compilerOptions": {
         "target": "es6",
-        "module": "commonjs",
+        "module": "CommonJS",
         "allowJs": true,
         "outDir": "./dist",
-        "rootDir": "./src",
+        "rootDir": "./",
         "strict": true,
         "watch": false,
         "noImplicitAny": false,
@@ -15,6 +15,7 @@
         "removeComments": true,
         "experimentalDecorators": true,
         "resolveJsonModule": true,
+        "moduleResolution": "node",
         "declaration": true,
         "lib": ["esnext"],
         "types": ["node", "mocha"],
@@ -23,5 +24,5 @@
         }
     },
     "exclude": ["node_modules", "build"],
-    "include": ["./src/**/*.ts", "./src/**/*.d.ts"]
+    "include": ["./src/**/*.ts", "./src/**/*.d.ts", "./test/**/*.ts", "./test/*.ts"]
 }

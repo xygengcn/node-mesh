@@ -3,7 +3,7 @@
     "version": "0.0.1",
     "description": "建立主分支形式Nodejs微服务框架",
     "scripts": {
-        "build": "tsc --project tsconfig.json && tsc-alias -p tsconfig.json",
+        "build": "rm -rf ./dist && rollup -c rollup.config.js",
         "test": "env-cmd -r .env.js -e test mocha test/**.test.ts --timeout 5000",
         "test:dev": "env-cmd -r .env.js -e development mocha test/**.test.ts --timeout 15000",
         "pref": "env-cmd -r .env.js -e test mocha test/pref.test.ts -t 5000"
@@ -26,6 +26,8 @@
         "nodemon": "^2.0.15",
         "prettier": "^2.5.1",
         "rollup": "^3.6.0",
+        "rollup-plugin-dts": "^5.0.0",
+        "rollup-plugin-typescript2": "^0.34.1",
         "ts-node": "^10.4.0",
         "tsc-alias": "^1.6.3",
         "tsconfig-paths": "^3.12.0",
