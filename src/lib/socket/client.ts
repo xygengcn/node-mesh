@@ -262,7 +262,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                     this.logError('[write]', '发送失败', e, ...args);
                     this.emit('error', e || Error('write error'));
                 } else {
-                    this.success('[write]');
+                    this.debug('[write]');
                 }
             });
         }
@@ -292,9 +292,9 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 封装发送消息
      * @param args
      */
-    private requestMessage(action: string, params: string | number | object, callback: false): void;
-    private requestMessage(action: string, params: string | number | object, callback: (error: Error | null, ...result: any[]) => void): void;
-    private requestMessage(action, params, callback) {
+    protected requestMessage(action: string, params: string | number | object, callback: false): void;
+    protected requestMessage(action: string, params: string | number | object, callback: (error: Error | null, ...result: any[]) => void): void;
+    protected requestMessage(action, params, callback) {
         if (this.socket) {
             // 请求时间
             const requestTime = new Date().getTime();
@@ -360,7 +360,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @param params
      * @returns
      */
-    private sendMessage(message: Partial<SocketMessage> & Pick<SocketMessage, 'action'>): string {
+    protected sendMessage(message: Partial<SocketMessage> & Pick<SocketMessage, 'action'>): string {
         if (!message.action) return '';
         // 请求时间
         const requestTime = new Date().getTime();
@@ -415,6 +415,15 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                     this.disconnect(error || new Error('Client bind error', { cause: { result, error } }));
                     return;
                 }
+
+                // 通知服务端上线了
+                this.sendMessage({
+                    action: 'socket:online',
+                    params: {
+                        clientId: this.options.id
+                    }
+                });
+
                 // 成功登录
                 this.status = 'online';
                 this.success('[online]', this.options.id);
@@ -427,7 +436,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 监听事件
      */
     private listenSocketEvent() {
-        this.log('[listenSocketEvent] 开始绑定事件');
+        this.debug('[listenSocketEvent] 开始绑定事件');
 
         // 接收来自服务端的信息
         const stream = new Stream();
@@ -439,7 +448,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             this.log('[data]', '收到消息: ', messages.args.length);
 
             // 外发
-            this.emit('data', buf);
+            this.emit('data', buf, this.socket);
 
             const message: SocketMessage = messages?.args?.[0];
 
@@ -539,7 +548,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             this.log('[message-hide]', '系统隐藏事件', 'messageId: ', message.requestId, 'action: ', message.action, 'type: ', message.type);
             // 回答别人的请求
             if (message.type === 'request') {
-                this.emit(message.action as keyof ClientSocketEvent, message, (body: any, error: Error | null = null) => {
+                this.emit(message.action as any, message, (body: any, error: Error | null = null) => {
                     this.debug('[message-hide-send]', '回调', 'messageId: ', message.requestId, 'body: ', body);
                     if (body) {
                         this.sendMessage({
@@ -633,7 +642,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 清理重连定时器
      */
     private clearRetryTimeout() {
-        this.log('[clearRetryTimeout]');
+        this.debug('[clearRetryTimeout]');
         if (this.retryTimeout) {
             clearTimeout(this.retryTimeout);
             this.retryTimeout = null;

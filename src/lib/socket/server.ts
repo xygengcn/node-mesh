@@ -1,3 +1,4 @@
+import { uuid } from '@/utils';
 import { ClientSocketBindOptions, ClientSocketBindStatus, ServerSocketBindResult, SocketMessage, SocketResponseAction } from '@/typings/socket';
 import net, { Server, Socket } from 'net';
 import Emitter from '../emitter';
@@ -12,12 +13,13 @@ export type ServerSocketStatus = 'stop' | 'running' | 'waiting' | 'pending';
  * 服务端事件
  */
 export type ServerSocketEvent = {
-    error: (e: Error) => void;
-    connect: (socket: Socket) => void;
-    close: (server: Server) => void;
-    listening: (Server: Server) => void;
-    data: (buf: Buffer) => void;
-    message: (message: SocketMessage, client: ClientSocket) => void;
+    error: (e: Error) => void; // server error
+    connect: (socket: Socket) => void; // client connect
+    close: (server: Server) => void; // server close
+    listening: (Server: Server) => void; // server running
+    data: (buf: Buffer, client: ClientSocket) => void; // client send data
+    message: (message: SocketMessage, client: ClientSocket) => void; // // client send message
+    online: (clientId: string) => void; // client online
 };
 
 /**
@@ -30,13 +32,6 @@ export interface ServerSocketOptions {
     host: string; // 地址 default：0.0.0.0
 }
 
-/**
- * 服务端的客户端配置
- */
-export interface ServerSocketClient {
-    client: ClientSocket;
-    status: 'bind' | 'unbind';
-}
 /**
  * 服务端
  */
@@ -51,7 +46,10 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     private options: ServerSocketOptions = { port: 31000, host: '0.0.0.0', serverId: 'Server' };
 
     // 客户端
-    private clientsMap: Map<string, ServerSocketClient> = new Map();
+    private onlineClients: Map<string, ClientSocket> = new Map();
+
+    // 临时客户端
+    private connectClients: Map<string, ClientSocket> = new Map();
 
     // 记录注册的函数 response：是否回调给客户端
     private serverHandleActionMap: Map<string, { action: SocketResponseAction; response: boolean }> = new Map();
@@ -73,7 +71,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         this.socket.close();
         this.status = 'stop';
         // 停止后把所有的客户端断开
-        this.clientsMap.forEach((c) => c.client.disconnect());
+        this.onlineClients.forEach((c) => c.disconnect());
     }
 
     /**
@@ -98,9 +96,9 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         if (this.status === 'running') {
             if (clientId && action) {
                 const socketId = `${this.options.serverId}-${clientId}`;
-                const socket = this.clientsMap.get(socketId);
-                if (socket?.status === 'bind' && socket.client) {
-                    return socket.client.request(action, data);
+                const socket = this.onlineClients.get(socketId);
+                if (socket) {
+                    return socket.request(action, data);
                 }
                 return Promise.reject(Error('client is not binding'));
             }
@@ -187,7 +185,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
     private handleClientConnect(socket: Socket) {
         // 临时id，绑定成功就会被移除
-        const tempSocketId = `temp-${this.options.serverId}-clientIndex-${this.clientsMap.size}`;
+        const tempSocketId = `temp-${this.options.serverId}-${uuid()}`;
 
         this.log('[connnect] 监听到客户端', socket.address(), socket.localAddress, tempSocketId);
 
@@ -208,14 +206,20 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         );
 
         // 临时绑定
-        this.clientsMap.set(tempSocketId, { status: 'unbind', client });
+        this.connectClients.set(tempSocketId, client);
 
         // 处理绑定事件
-        client.once('socket:bind', this.handleClientBindEvent.bind(this, tempSocketId, client));
+        client.once('socket:bind' as any, this.handleClientBindEvent.bind(this, tempSocketId, client));
+
+        // 处理客户端上线事件
+        client.once('socket:online' as any, ({ clientId }) => {
+            // 客户端上线上线
+            this.emit('online', clientId);
+        });
 
         // 消息通知
         client.on('data', (buf) => {
-            this.emit('data', buf);
+            this.emit('data', buf, client);
         });
 
         // 注册事件
@@ -252,7 +256,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         if (bind.serverId === this.options.serverId) {
             if (!this.options.secret || this.options.secret === bind.secret) {
                 // 绑定成功
-                this.clientsMap.set(socketId, { status: 'bind', client });
+                this.onlineClients.set(socketId, client);
                 client.status = 'online';
                 this.success('[server-bind] 绑定服务端成功', bind);
 
@@ -260,8 +264,9 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
                 client.setDefaultOptions({ targetId: bind.clientId });
 
                 // 移除临时绑定
-                this.clientsMap.delete(tempSocketId);
-                this.log('[socketId] socketId切换', `由${tempSocketId}正式切换到${socketId}`);
+                this.connectClients.delete(tempSocketId);
+
+                this.debug('[client-online] socketId切换', `由${tempSocketId}正式切换到${socketId}`);
 
                 return send({
                     status: ClientSocketBindStatus.success,

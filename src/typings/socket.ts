@@ -13,7 +13,7 @@ export interface NetSocketEvent {
     close: (socket: Socket) => void; // 关闭
     end: (socket: Socket) => void; // 结束 比close先执行
     connect: (socket: Socket) => void; // 请求成功
-    data: (buf: Buffer) => void; // socket传送数据
+    data: (buf: Buffer, socket: Socket) => void; // socket传送数据
 }
 
 /**
@@ -21,7 +21,6 @@ export interface NetSocketEvent {
  */
 export interface ClientSocketEvent extends NetSocketEvent {
     beforeBind: (content: ClientSocketBindOptions, socket: Socket) => void; // 开始绑定，还没发送bind:callback
-    'socket:bind': (message: SocketMessage, send: (message: any) => void) => void;
     afterBind: (content: ClientSocketBindOptions, socket: Socket) => void; // 绑定回调
     send: (content: any) => void; // 回调发出消息
     message: (message: SocketMessage) => void; // 收到规范的消息了
