@@ -21,7 +21,7 @@ describe('客户端和服务端的发消息性能测试', () => {
         server.stop();
     });
     describe('双向测试', () => {
-        it('客户端request，服务端response, 测试100次的时间', (done) => {
+        it('客户端request，服务端response, 测试10000次的时间', (done) => {
             client.connect();
             client.on('online', () => {
                 const time = new Date().getTime();

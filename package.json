@@ -4,7 +4,8 @@
     "description": "建立主分支形式Nodejs微服务框架",
     "scripts": {
         "build": "rm -rf ./dist && rollup -c rollup.config.js",
-        "dev": "env-cmd -r .env.js -e development mocha test/error.test.ts --timeout 15000",
+        "server": "env-cmd -r .env.js -e development nodemon test/server.dev.ts --timeout 15000",
+        "dev": "env-cmd -r .env.js -e development nodemon test/client.dev.ts",
         "test": "env-cmd -r .env.js -e test mocha test/**.test.ts --timeout 5000",
         "test:dev": "env-cmd -r .env.js -e development mocha test/**.test.ts --timeout 15000",
         "pref": "env-cmd -r .env.js -e test mocha test/pref.test.ts -t 5000"

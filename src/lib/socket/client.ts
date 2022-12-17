@@ -478,7 +478,16 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             this.autoRetryConnect();
         });
 
-        // 对方发送了关闭数据包过来的事件
+        /**
+         * 对方发送了关闭数据包过来的事件
+         *
+         * 1、手动断开服务端进程，客户端会触发
+         * 2、服务端disconnect，客户端会触发
+         * 3、客户端disconnect，服务端会触发
+         * 4、手动断开客户端进程，服务端会触发
+         *
+         * 自己disconnect不会触发
+         */
         this.socket.once('end', () => {
             this.log('[end]');
             this.status = 'offline';
