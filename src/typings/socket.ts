@@ -21,12 +21,13 @@ export interface NetSocketEvent {
  */
 export interface ClientSocketEvent extends NetSocketEvent {
     beforeBind: (content: ClientSocketBindOptions, socket: Socket) => void; // 开始绑定，还没发送bind:callback
+    'socket:bind': (message: SocketMessage, send: (message: any) => void) => void;
     afterBind: (content: ClientSocketBindOptions, socket: Socket) => void; // 绑定回调
+    send: (content: any) => void; // 回调发出消息
     message: (message: SocketMessage) => void; // 收到规范的消息了
     online: (socket: Socket) => void; // 上线成功
     reconnect: (socket: Socket) => void; // 开始重连
     disconnect: (socket: Socket) => void; // 开始重连
-    requestCallback: (error: null | Error, message: SocketMessage) => void; // 请求收到回调
 }
 
 /**
@@ -63,6 +64,14 @@ export interface ClientSocketBindOptions {
     secret?: string; // 密钥 用来验证密钥
     host: string; // 目标地址
     port: number; // 目标端口
+    status: ClientSocketBindStatus; // 绑定状态
+}
+
+/**
+ * 返回绑定结果
+ */
+export interface ServerSocketBindResult {
+    socketId: string;
     status: ClientSocketBindStatus; // 绑定状态
 }
 

@@ -1,11 +1,12 @@
 import { ClientSocketBindOptions, ClientSocketBindStatus, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketMessage, SocketResponseAction } from '@/typings/socket';
-import { uuid } from '@/utils';
+import { parseError, stringifyError, uuid } from '@/utils';
 import Message from 'amp-message';
 import net, { Socket } from 'net';
 import Emitter from '../emitter';
 import { Stream } from 'amp';
 /**
  * 客户端
+ *
  */
 export default class ClientSocket extends Emitter<ClientSocketEvent> {
     // 状态
@@ -26,8 +27,8 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     // 记录每次请求
     private clientRequestTimeoutMap: Map<string, NodeJS.Timer> = new Map();
 
-    // 记录注册的函数 once：一次性 response：是否回调给客户端
-    private clientHandleActionMap: Map<string, { action: SocketResponseAction; once: boolean }> = new Map();
+    // 记录response的函数
+    private clientHandleResponseMap: Map<string, { callback: SocketResponseAction; once: boolean }> = new Map();
 
     // @todo 离线状态发送消息缓存
     // private messageCacheQueue: Set<SocketMessage> = new Set();
@@ -49,6 +50,13 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             this.socket = new Socket();
         }
     }
+
+    /**
+     * 插件
+     * @param string
+     * @param plugins
+     */
+    // public use(hook: string, plugins: (_this: ClientSocket) => void) {}
 
     /**
      * 重新设置配置
@@ -151,6 +159,8 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     /**
      * 请求消息
      *
+     * 俗称约定：action为socket:*为隐藏指令
+     *
      * @todo 先查找本地有没有注册，上层实现
      *
      *
@@ -167,11 +177,11 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         // 正常情况,没有callback返回promise
         if (this.socket && this.status === 'online') {
             if (typeof callback === 'function') {
-                this.sendMessage(action, { params: data }, callback);
+                this.requestMessage(action, data, callback);
                 return;
             } else {
                 return new Promise((resolve, reject) => {
-                    this.sendMessage(action, { params: data }, (error, result) => {
+                    this.requestMessage(action, data, (error, result) => {
                         if (error) {
                             reject(error);
                         } else {
@@ -201,16 +211,11 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @param callback
      */
     public response(action: string, callback: SocketResponseAction) {
-        this.clientHandleActionMap.set(action, { action: callback, once: false });
-    }
-
-    /**
-     * 一次性回答事件
-     * @param action
-     * @param callback
-     */
-    public handle(action: string, callback: SocketResponseAction) {
-        this.clientHandleActionMap.set(action, { action: callback, once: true });
+        if (typeof action === 'string' && typeof callback === 'function') {
+            this.clientHandleResponseMap.set(action, { callback, once: false });
+            return;
+        }
+        throw TypeError('Wrong type. Action is a string type and callback is a function');
     }
 
     /**
@@ -223,14 +228,14 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @param action
      * @param data
      */
-    public publish<T extends any = any>(action: string, data?: T) {
-        this.log('[publish]', this.status);
-        if (this.socket && this.status === 'online') {
-            this.sendMessage(action, { params: data }, false);
-        } else {
-            this.emit('error', new Error("Socket isn't connect !"));
-        }
-    }
+    // public publish<T extends any = any>(action: string, data?: T) {
+    //     this.log('[publish]', this.status);
+    //     if (this.socket && this.status === 'online') {
+    //         this.requestMessage(action, data, false);
+    //     } else {
+    //         this.emit('error', new Error("Socket isn't connect !"));
+    //     }
+    // }
 
     /**
      * 订阅事件，不回调给客户端
@@ -240,9 +245,9 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @param action
      * @param callback
      */
-    public subscribe(action: string, callback: SocketResponseAction<void>): void {
-        this.clientHandleActionMap.set(action, { action: callback, once: false });
-    }
+    // public subscribe(action: string, callback: SocketResponseAction<void>): void {
+    //     this.clientHandleActionMap.set(action, { action: callback, once: false });
+    // }
 
     /**
      * 发送消息
@@ -279,17 +284,17 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 返回所有动作的keys
      * @returns
      */
-    public getHandleActionKeys() {
-        return this.clientHandleActionMap.keys();
+    public responseKeys() {
+        return this.clientHandleResponseMap.keys();
     }
 
     /**
      * 封装发送消息
      * @param args
      */
-    private sendMessage(action: string, message: Partial<SocketMessage>, callback: false);
-    private sendMessage(action: string, message: Partial<SocketMessage>, callback: (error: Error | null, ...result: any[]) => void);
-    private sendMessage(action, message, callback) {
+    private requestMessage(action: string, params: string | number | object, callback: false): void;
+    private requestMessage(action: string, params: string | number | object, callback: (error: Error | null, ...result: any[]) => void): void;
+    private requestMessage(action, params, callback) {
         if (this.socket) {
             // 请求时间
             const requestTime = new Date().getTime();
@@ -301,7 +306,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             const msgType: SocketMessage['type'] = typeof callback === 'boolean' && callback === false ? 'publish' : 'request';
 
             // log
-            this.log('[sendMessage]', '发出消息: ', requestId, '消息类型: ', msgType);
+            this.log('[requestMessage]', '发出消息: ', requestId, '消息类型: ', msgType);
 
             // 存在回调
             if (callback && typeof callback === 'function') {
@@ -328,29 +333,61 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                 // 收到回调
                 this.once(requestId as any, (error, ...result) => {
                     clearTimerEvent();
-                    callback(error, ...result);
+                    // 日志
+                    this.log('[requestMessage]', '收到消息回调: ', requestId);
+
+                    // 需要处理错误信息
+                    callback(parseError(error), ...result);
                 });
             }
 
-            // 发送内容
-            const socketMessage: SocketMessage = {
-                type: msgType,
-                body: {},
-                params: {},
-                error: null,
-                ...(message || {}),
-                requestId,
-                responseId: '',
-                time: requestTime,
-                action,
-                targetId: this.options.targetId,
-                fromId: this.options.id,
-                scene: this.options.type || 'client'
-            };
-
             // 发送
-            this.write(socketMessage);
+            this.sendMessage({
+                params,
+                action,
+                requestId,
+                time: requestTime
+            });
         }
+    }
+
+    /**
+     * 发送消息
+     * @param action
+     * @param type
+     * @param body
+     * @param error
+     * @param params
+     * @returns
+     */
+    private sendMessage(message: Partial<SocketMessage> & Pick<SocketMessage, 'action'>): string {
+        if (!message.action) return '';
+        // 请求时间
+        const requestTime = new Date().getTime();
+        // 生成唯一id
+        const requestId = `${this.options.id}-${uuid()}-${requestTime}`;
+        // 发送内容
+        const socketMessage: SocketMessage = {
+            type: 'request',
+            body: {},
+            params: {},
+            requestId,
+            time: requestTime,
+            // 传入
+            ...(message || {}),
+            error: stringifyError(message?.error) as any,
+            // 下面的是不能改的
+            targetId: this.options.targetId,
+            fromId: this.options.id,
+            scene: this.options.type || 'client'
+        };
+        // 发送
+        if (socketMessage.action) {
+            this.emit('send', socketMessage);
+            this.write(socketMessage);
+            return socketMessage.requestId;
+        }
+        return '';
     }
 
     /**
@@ -365,12 +402,12 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         if (this.status === 'binding') {
             // 发送绑定事件到客户端
             this.emit('beforeBind', content, this.socket);
-            this.sendMessage('socket:bind', { params: content }, (error, result: ClientSocketBindOptions) => {
+            this.requestMessage('socket:bind', content, (error, result: ClientSocketBindOptions) => {
                 // 收到回调
                 this.emit('afterBind', result, this.socket);
 
-                // 日志
-                this.log('[afterBind]', 'socket status: ', this.status, 'result status: ', result.status, 'error: ', error);
+                // 日志.
+                this.debug('[afterBind]', 'socket status: ', this.status, 'result: ', 'error: ', error);
 
                 // 绑定失败
                 if (error || result.status !== ClientSocketBindStatus.success) {
@@ -397,22 +434,20 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         this.socket.pipe(stream);
         stream.on('data', (buf) => {
             // 解析数据流
-            const message = new Message(buf);
+            const messages = new Message(buf);
             // 日志
-            this.debug('[data]', '收到消息: ', message.args.length);
+            this.log('[data]', '收到消息: ', messages.args.length);
 
             // 外发
             this.emit('data', buf);
 
-            const msg = message?.args?.[0];
+            const message: SocketMessage = messages?.args?.[0];
 
-            // 在线状态再触发，是固定消息模式
-            if (this.status === 'online' && typeof message === 'object' && msg?.action && msg?.requestId) {
-                this.log('[message]', 'requestId', msg?.requestId, 'action', msg?.action);
-                this.emit('message', msg);
-            }
+            // 系统隐藏消息
+            const isSysHideMessage = this.handleSysteamHideMessage(message);
+
             // 处理事件
-            this.handleSocketDataActionAndResponse(message?.args[0]);
+            !isSysHideMessage && this.handleSocketDataActionAndResponse(message);
         });
 
         // 有错误发生调用的事件
@@ -486,83 +521,103 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     }
 
     /**
+     * 处理系统隐藏消息
+     * @param message
+     */
+    private handleSysteamHideMessage(message: SocketMessage) {
+        // 系统指令
+        if (typeof message === 'object' && message?.action && message?.requestId && /^socket:.+$/i.test(message.action)) {
+            this.log('[message-hide]', '系统隐藏事件', 'messageId: ', message.requestId, 'action: ', message.action, 'type: ', message.type);
+            // 回答别人的请求
+            if (message.type === 'request') {
+                this.emit(message.action as keyof ClientSocketEvent, message, (body: any, error: Error | null = null) => {
+                    this.debug('[message-hide-send]', '回调', 'messageId: ', message.requestId, 'body: ', body);
+                    if (body) {
+                        this.sendMessage({
+                            action: message.action,
+                            requestId: message.requestId,
+                            type: 'response',
+                            error,
+                            body
+                        });
+                    }
+                });
+            } else {
+                this.log('[message-hide-callback]', '收到系统隐藏指令的回调', 'requestId: ', message.requestId);
+                // 触发请求回调
+                this.emit(message.requestId as any, message.error, message.body);
+            }
+
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * 处理来自对方的数据，并回调
      * @param message
      */
     private async handleSocketDataActionAndResponse(message: SocketMessage) {
         // log
-        this.debug('[handleSocketDataActionAndResponse]', '处理来自对方的数据', message, 'options: ', this.options);
+        this.debug('[message-data]', '处理来自对方的数据', message, 'options: ', this.options);
 
-        // 自己发出request请求，别人回答了，收到回调 如果是在线状态需要校验targetId
-        if (message && typeof message === 'object' && message.type === 'response' && message.action && (this.status === 'online' ? message.targetId === this.options.id : true)) {
-            // 日志
-            this.log('[requestCallback]', '消息回调: ', message.requestId);
+        if (message && typeof message === 'object' && message.action && message.targetId === this.options.id && message.requestId && this.status === 'online') {
+            // 在线状态再触发，是固定消息模式
+            this.log('[message]', 'requestId', message?.requestId, 'action', message?.action);
+            this.emit('message', message);
 
-            // 消息回调
-            this.emit('requestCallback', null, message);
+            // 开始细处理各事件
 
-            // 触发请求回调
-            this.emit(message.requestId as any, message.error, message.body);
-            return;
-        }
-
-        // 收到别人的request请求，并回答它，如果是在线状态需要校验targetId
-        if (
-            message &&
-            typeof message === 'object' &&
-            message.type === 'request' &&
-            message.requestId &&
-            message.action &&
-            (this.status === 'online' ? message.targetId === this.options.id : true)
-        ) {
-            // 获取执行函数
-            const event = this.clientHandleActionMap.get(message.action);
-
-            // 存在回调
-            this.log('[handleSocketAction]', '开始处理回调: ', message.requestId, 'event: ', !!event);
-
-            // 结果
-            let body = null;
-
-            // 错误
-            let error = null;
-
-            // 执行函数
-            if (event && typeof event.action === 'function') {
-                try {
-                    // 运行注册函数
-                    body = await event.action(message.params || {});
-                    // 一次性的
-                    if (event.once) {
-                        this.clientHandleActionMap.delete(message.action);
-                    }
-                } catch (error: any) {
-                    this.emit('error', error);
-                    error = error;
-                }
+            // 自己发出request请求，别人回答了，收到回调 如果是在线状态需要校验targetId
+            if (message.type === 'response') {
+                // 日志
+                this.log('[requestCallback]', '这是一条回调消息: ', message?.requestId);
+                // 触发请求回调
+                this.emit(message.requestId as any, message.error, message.body);
+                return;
             }
 
-            this.log('[handleSocketAction]', '回调结果: ', message.requestId, 'error: ', !!error);
+            // 收到别人的request请求，并回答它，如果是在线状态需要校验targetId
+            if (message.type === 'request') {
+                // 获取执行函数
+                const event = this.clientHandleResponseMap.get(message.action);
 
-            // 处理订阅不返回事件
-            const responseMessage: SocketMessage<any, any> = {
-                requestId: message.requestId,
-                params: null,
-                error,
-                body,
-                scene: this.options.type || 'client',
-                action: message.action,
-                time: new Date().getTime(),
-                targetId: message.fromId,
-                fromId: message.targetId,
-                type: 'response' // 这是一条回调消息
-            };
-            this.write(responseMessage);
-            return;
+                // 存在回调
+                this.log('[responeMessage]', '这是一条请求消息: ', message.requestId, 'event: ', !!event);
+
+                // 结果
+                let body = null;
+
+                // 错误
+                let error = null;
+
+                // 执行函数
+                if (event && typeof event.callback === 'function') {
+                    try {
+                        // 运行注册函数
+                        body = await event.callback(message.params || {});
+                        // 一次性的
+                        if (event.once) {
+                            this.clientHandleResponseMap.delete(message.action);
+                        }
+                    } catch (e: any) {
+                        error = e;
+                    }
+                }
+
+                this.sendMessage({
+                    action: message.action,
+                    requestId: message.requestId,
+                    type: 'response',
+                    error,
+                    body
+                });
+                return;
+            }
         }
 
         // 普通消息，不处理
-        this.log('[handleSocketAction]', '不处理', message.requestId);
+        this.log('[message-data]', '不处理', message.requestId);
     }
 
     /**

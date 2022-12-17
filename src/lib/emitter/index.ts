@@ -82,7 +82,6 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
     public on(event: 'debug:log' | 'debug:success' | 'debug:error', listener: (title: string, ...args: any[]) => void): this;
     public on<T extends EventEmitter.EventNames<K>>(event: T, listener: EventEmitter.EventListener<K, T>): this;
     public on(event, listener) {
-        this.log('Evnet:on]', event);
         return super.on(event, listener);
     }
 
@@ -95,7 +94,6 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
     public once(event: 'debug:log' | 'debug:success' | 'debug:error', listener: (title: string, ...args: any[]) => void);
     public once<T extends EventEmitter.EventNames<K>>(event: T, listener: EventEmitter.EventListener<K, T>);
     public once(event, listener) {
-        this.log('[Event:once]', event);
         return super.once(event, listener);
     }
 

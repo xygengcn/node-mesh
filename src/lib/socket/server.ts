@@ -1,4 +1,4 @@
-import { ClientSocketBindOptions, ClientSocketBindStatus, SocketMessage, SocketResponseAction } from '@/typings/socket';
+import { ClientSocketBindOptions, ClientSocketBindStatus, ServerSocketBindResult, SocketMessage, SocketResponseAction } from '@/typings/socket';
 import net, { Server, Socket } from 'net';
 import Emitter from '../emitter';
 import ClientSocket from './client';
@@ -88,6 +88,28 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     }
 
     /**
+     * 发送消息
+     * @param clientId
+     * @param action
+     * @param data
+     * @returns
+     */
+    public request<T = any>(clientId: string, action: string, data: string | number | object): Promise<T> {
+        if (this.status === 'running') {
+            if (clientId && action) {
+                const socketId = `${this.options.serverId}-${clientId}`;
+                const socket = this.clientsMap.get(socketId);
+                if (socket?.status === 'bind' && socket.client) {
+                    return socket.client.request(action, data);
+                }
+                return Promise.reject(Error('client is not binding'));
+            }
+            return Promise.reject(Error('clientId and Action is required'));
+        }
+        return Promise.reject(Error('server is not running'));
+    }
+
+    /**
      * 回答事件
      * @param action
      * @param callback
@@ -165,7 +187,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
     private handleClientConnect(socket: Socket) {
         // 临时id，绑定成功就会被移除
-        const tempSocketId = `${this.options.serverId}-clientIndex-${this.clientsMap.size}`;
+        const tempSocketId = `temp-${this.options.serverId}-clientIndex-${this.clientsMap.size}`;
 
         this.log('[connnect] 监听到客户端', socket.address(), socket.localAddress, tempSocketId);
 
@@ -189,7 +211,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         this.clientsMap.set(tempSocketId, { status: 'unbind', client });
 
         // 处理绑定事件
-        client.handle('socket:bind', this.handleClientBindEvent.bind(this, tempSocketId, client));
+        client.once('socket:bind', this.handleClientBindEvent.bind(this, tempSocketId, client));
 
         // 消息通知
         client.on('data', (buf) => {
@@ -214,11 +236,17 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
      * @param bind
      * @returns
      */
-    private handleClientBindEvent(tempSocketId: string, client: ClientSocket, bind: ClientSocketBindOptions): ClientSocketBindOptions {
+    private handleClientBindEvent(
+        tempSocketId: string,
+        client: ClientSocket,
+        message: SocketMessage<ClientSocketBindOptions>,
+        send: (content: ServerSocketBindResult) => void
+    ): void {
+        const bind = message.params;
         // 生成socketId
-        const socketId = `${bind.clientId}-${this.options.serverId}`;
+        const socketId = `${this.options.serverId}-${bind.clientId}`;
 
-        this.log('[server-bind] 开始绑定服务端', 'socketId: ', socketId, bind, this.options);
+        this.debug('[server-bind] 开始绑定服务端', 'socketId: ', socketId, message, this.options);
 
         // 验证身份
         if (bind.serverId === this.options.serverId) {
@@ -235,27 +263,23 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
                 this.clientsMap.delete(tempSocketId);
                 this.log('[socketId] socketId切换', `由${tempSocketId}正式切换到${socketId}`);
 
-                return {
-                    ...bind,
+                return send({
                     status: ClientSocketBindStatus.success,
-                    serverId: this.options.serverId
-                };
+                    socketId
+                });
             }
             this.logError('[server-bind] auth验证失败', bind, this.options);
-
-            return {
-                ...bind,
+            return send({
                 status: ClientSocketBindStatus.authError,
-                serverId: this.options.serverId
-            };
+                socketId
+            });
         }
 
         // 返回失败信息
         this.logError('[server-bind] serverID验证失败', bind, this.options.serverId);
-        return {
-            ...bind,
+        return send({
             status: ClientSocketBindStatus.error,
-            serverId: this.options.serverId
-        };
+            socketId
+        });
     }
 }

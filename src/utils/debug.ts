@@ -33,7 +33,7 @@ export function log(title: string, ...args: any[]) {
  * @param args
  */
 export function debug(title: string, ...args: any[]) {
-    console.log(cyanColor(`[log]`), colors.yellow(title), ...args);
+    console.log(cyanColor(`[debug]`), colors.yellow(title), ...args);
 }
 
 /**
