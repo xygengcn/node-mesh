@@ -1,8 +1,9 @@
 import { uuid } from '@/utils';
-import { ClientSocketBindOptions, ClientSocketBindStatus, ServerSocketBindResult, SocketMessage, SocketResponseAction } from '@/typings/socket';
+import { ClientSocketBindOptions, ServerSocketBindResult, SocketMessage, SocketResponseAction } from '@/typings/socket';
 import net, { Server, Socket } from 'net';
 import Emitter from '../emitter';
 import ClientSocket from './client';
+import { ClientSocketBindStatus } from '@/typings/enum';
 
 /**
  * 服务端状态

@@ -1,4 +1,5 @@
 import { Socket } from 'net';
+import { ClientSocketBindStatus } from './enum';
 
 /**
  * 客户端状态 空，请求连接，绑定中，在线，重试，错误，下线
@@ -42,16 +43,6 @@ export interface ClientSocketOptions {
     retryDelay?: number; // 是否重连 default：3000
     timeout?: number; // 请求超时 default: 5000
     type?: 'client' | 'server'; // 用来判断操作端是客户端还是服务端
-}
-
-/**
- * 绑定状态
- */
-export enum ClientSocketBindStatus {
-    waiting = 0,
-    error = 2, // 服务器id失败
-    authError = 3, // 验证secret失败
-    success = 1
 }
 
 /**

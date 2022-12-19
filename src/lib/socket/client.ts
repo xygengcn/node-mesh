@@ -1,9 +1,10 @@
-import { ClientSocketBindOptions, ClientSocketBindStatus, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketMessage, SocketResponseAction } from '@/typings/socket';
+import { ClientSocketBindOptions, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketMessage, SocketResponseAction } from '@/typings/socket';
 import { parseError, stringifyError, uuid } from '@/utils';
 import Message from 'amp-message';
 import net, { Socket } from 'net';
 import Emitter from '../emitter';
 import { Stream } from 'amp';
+import { ClientSocketBindStatus } from '@/typings/enum';
 /**
  * 客户端
  *
