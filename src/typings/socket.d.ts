@@ -1,4 +1,5 @@
 import { Socket } from 'net';
+import { ClientSocket } from '..';
 import { ClientSocketBindStatus } from './enum';
 
 /**
@@ -14,7 +15,7 @@ export interface NetSocketEvent {
     close: (socket: Socket) => void; // 关闭
     end: (socket: Socket) => void; // 结束 比close先执行
     connect: (socket: Socket) => void; // 请求成功
-    data: (buf: Buffer, socket: Socket) => void; // socket传送数据
+    data: (buf: Buffer) => void; // socket传送数据
 }
 
 /**
@@ -86,3 +87,8 @@ export type SocketMessage<B = any, R = any> = {
  * 注册动作函数
  */
 export type SocketResponseAction<T extends any = any> = (params: SocketMessage['params']) => T;
+
+/**
+ * 中间件
+ */
+export type ClientMiddleware = ((client: ClientSocket, next: () => void) => void) | ((client: ClientSocket, next: () => void) => Promise<void>);

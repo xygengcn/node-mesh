@@ -70,3 +70,25 @@ export function parseError(error: Error | null | undefined) {
     const errObj = parseJson(error) as Error;
     return Error(errObj.message, errObj);
 }
+
+/**
+ * compose函数
+ * @param middlewares
+ * @returns
+ */
+export function compose(middlewares: Array<Function>) {
+    return function (arg: any) {
+        return dispatch(0);
+        function dispatch(i: number) {
+            let fn = middlewares[i];
+            if (!fn) {
+                return Promise.resolve();
+            }
+            return Promise.resolve(
+                fn(arg, function next() {
+                    return dispatch(i + 1);
+                })
+            );
+        }
+    };
+}
