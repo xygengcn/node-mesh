@@ -39,12 +39,12 @@ export function clientSocketBindMiddleware(): ClientMiddleware {
         if (client.status === 'binding') {
             // 发送绑定事件到客户端
             client.emit('beforeBind', content, client.socket);
-            client.requestMessage('socket:bind', content, (error, result: ClientSocketBindOptions) => {
+            client.request('socket:bind', content, (error, result: ClientSocketBindOptions) => {
                 // 收到回调
                 client.emit('afterBind', result, client.socket);
 
                 // 日志.
-                client.debug('[afterBind]', 'socket status: ', client.status, 'result: ', 'error: ', error);
+                client.debug('[afterBind]', result, error);
 
                 // 绑定失败
                 if (error || result.status !== ClientSocketBindStatus.success) {
@@ -53,17 +53,20 @@ export function clientSocketBindMiddleware(): ClientMiddleware {
                     return;
                 }
 
+                // 成功登录
+                client.status = 'online';
+                client.success('[online]', client.options.id);
+
                 // 通知服务端上线了
-                client.sendMessage({
+                client.log('[online]', '通知服务端，客户端绑定成功');
+                client.send({
                     action: 'socket:online',
                     params: {
                         clientId: client.options.id
                     }
                 });
 
-                // 成功登录
-                client.status = 'online';
-                client.success('[online]', client.options.id);
+                // 上线了
                 client.emit('online', client.socket);
             });
         }

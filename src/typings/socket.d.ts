@@ -5,7 +5,7 @@ import { ClientSocketBindStatus } from './enum';
 /**
  * 客户端状态 空，请求连接，绑定中，在线，重试，错误，下线
  */
-export type ClientSocketStatus = 'none' | 'pending' | 'binding' | 'online' | 'retrying' | 'error' | 'offline';
+export type ClientSocketStatus = 'none' | 'pending' | 'binding' | 'online' | 'error' | 'retrying' | 'offline';
 
 /**
  * 原生socket事件
@@ -82,6 +82,21 @@ export type SocketMessage<B = any, R = any> = {
     type: 'request' | 'publish' | 'response'; // 消息类型，请求或者发布，请求有消息回调，发布没有回调
     scene: 'client' | 'server'; // 判断是谁发的
 };
+
+/**
+ * 发送的消息体结构
+ */
+export type SocketSendMessage = Partial<Pick<SocketMessage, 'body' | 'error' | 'params' | 'requestId' | 'type'>> & Pick<SocketMessage, 'action'>;
+
+/**
+ * 服务端配置
+ */
+export interface ServerSocketOptions {
+    serverId: string; // 名称
+    secret?: string; // 密钥
+    port: number; // 端口 default：31000
+    host: string; // 地址 default：0.0.0.0
+}
 
 /**
  * 注册动作函数

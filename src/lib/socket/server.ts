@@ -1,9 +1,9 @@
+import serverBindMiddleware from '@/middlewares/server-bind';
+import { ServerSocketOptions, SocketMessage, SocketResponseAction } from '@/typings/socket';
 import { uuid } from '@/utils';
-import { ClientSocketBindOptions, ServerSocketBindResult, SocketMessage, SocketResponseAction } from '@/typings/socket';
 import net, { Server, Socket } from 'net';
 import Emitter from '../emitter';
 import ClientSocket from './client';
-import { ClientSocketBindStatus } from '@/typings/enum';
 
 /**
  * 服务端状态
@@ -24,16 +24,6 @@ export type ServerSocketEvent = {
 };
 
 /**
- * 服务端配置
- */
-export interface ServerSocketOptions {
-    serverId: string; // 名称
-    secret?: string; // 密钥
-    port: number; // 端口 default：31000
-    host: string; // 地址 default：0.0.0.0
-}
-
-/**
  * 服务端
  */
 export default class ServerSocket extends Emitter<ServerSocketEvent> {
@@ -44,13 +34,13 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     public status: ServerSocketStatus = 'waiting';
 
     // 配置
-    private options: ServerSocketOptions = { port: 31000, host: '0.0.0.0', serverId: 'Server' };
+    public options: ServerSocketOptions = { port: 31000, host: '0.0.0.0', serverId: 'Server' };
 
     // 客户端
-    private onlineClients: Map<string, ClientSocket> = new Map();
+    public onlineClients: Map<string, ClientSocket> = new Map();
 
     // 临时客户端
-    private connectClients: Map<string, ClientSocket> = new Map();
+    public connectClients: Map<string, ClientSocket> = new Map();
 
     // 记录注册的函数 response：是否回调给客户端
     private serverHandleActionMap: Map<string, { action: SocketResponseAction; response: boolean }> = new Map();
@@ -73,6 +63,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         this.status = 'stop';
         // 停止后把所有的客户端断开
         this.onlineClients.forEach((c) => c.disconnect());
+        this.connectClients.forEach((c) => c.disconnect());
     }
 
     /**
@@ -188,7 +179,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         // 临时id，绑定成功就会被移除
         const tempSocketId = `temp-${this.options.serverId}-${uuid()}`;
 
-        this.log('[connnect] 监听到客户端', socket.address(), socket.localAddress, tempSocketId);
+        this.log('[connnect]', '监听到客户端', 'address: ', socket.address(), 'localAddress: ', socket.localAddress, '临时id: ', tempSocketId);
 
         this.emit('connect', socket);
 
@@ -210,13 +201,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         this.connectClients.set(tempSocketId, client);
 
         // 处理绑定事件
-        client.once('socket:bind' as any, this.handleClientBindEvent.bind(this, tempSocketId, client));
-
-        // 处理客户端上线事件
-        client.once('socket:online' as any, ({ clientId }) => {
-            // 客户端上线上线
-            this.emit('online', clientId);
-        });
+        client.use('data', serverBindMiddleware(this, tempSocketId));
 
         // 消息通知
         client.on('data', (buf) => {
@@ -232,60 +217,6 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         client.on('message', (msg) => {
             this.log('[server-message]', '服务端收到数据: ', msg?.requestId, 'action:', msg?.action);
             this.emit('message', msg, client);
-        });
-    }
-
-    /**
-     * 处理客户端绑定事件
-     * @param tempSocketId
-     * @param bind
-     * @returns
-     */
-    private handleClientBindEvent(
-        tempSocketId: string,
-        client: ClientSocket,
-        message: SocketMessage<ClientSocketBindOptions>,
-        send: (content: ServerSocketBindResult) => void
-    ): void {
-        const bind = message.params;
-        // 生成socketId
-        const socketId = `${this.options.serverId}-${bind.clientId}`;
-
-        this.debug('[server-bind] 开始绑定服务端', 'socketId: ', socketId, message, this.options);
-
-        // 验证身份
-        if (bind.serverId === this.options.serverId) {
-            if (!this.options.secret || this.options.secret === bind.secret) {
-                // 绑定成功
-                this.onlineClients.set(socketId, client);
-                client.status = 'online';
-                this.success('[server-bind] 绑定服务端成功', bind);
-
-                // 绑定目标id
-                client.setDefaultOptions({ targetId: bind.clientId });
-
-                // 移除临时绑定
-                this.connectClients.delete(tempSocketId);
-
-                this.debug('[client-online] socketId切换', `由${tempSocketId}正式切换到${socketId}`);
-
-                return send({
-                    status: ClientSocketBindStatus.success,
-                    socketId
-                });
-            }
-            this.logError('[server-bind] auth验证失败', bind, this.options);
-            return send({
-                status: ClientSocketBindStatus.authError,
-                socketId
-            });
-        }
-
-        // 返回失败信息
-        this.logError('[server-bind] serverID验证失败', bind, this.options.serverId);
-        return send({
-            status: ClientSocketBindStatus.error,
-            socketId
         });
     }
 }

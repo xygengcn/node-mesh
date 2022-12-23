@@ -13,23 +13,21 @@ import type { ClientSocket } from '..';
  */
 export function clientSocketMessageMiddleware(): ClientMiddleware {
     return async (client: ClientSocket, next) => {
-        if (client.body) {
-            const messages = new Message(client.body);
-            const message: SocketMessage = messages?.args?.[0];
-            // log
-            client.debug('[message-data]', '处理来自对方的数据', message, 'options: ', client.options);
-
-            if (message && typeof message === 'object' && message.action && message.targetId === client.options.id && message.requestId && client.status === 'online') {
+        const messages = client.body && new Message(client.body);
+        const message: SocketMessage = messages?.args?.[0];
+        if (message && typeof message === 'object') {
+            if (message.action && message.targetId === client.options.id && message.requestId) {
+                // log
+                client.debug('[message]', message);
                 // 在线状态再触发，是固定消息模式
-                client.log('[message]', 'requestId', message?.requestId, 'action', message?.action);
-                client.emit('message', message);
-
-                // 开始细处理各事件
+                if (client.status === 'online') {
+                    client.emit('message', message);
+                }
 
                 // 自己发出request请求，别人回答了，收到回调 如果是在线状态需要校验targetId
                 if (message.type === 'response') {
                     // 日志
-                    client.log('[requestCallback]', '这是一条回调消息: ', message?.requestId);
+                    client.log('[message-response]', '这是一条回调消息:', message?.requestId);
                     // 触发请求回调
                     client.emit(message.requestId as any, message.error, message.body);
                     return;
@@ -41,7 +39,7 @@ export function clientSocketMessageMiddleware(): ClientMiddleware {
                     const event = client.clientHandleResponseMap.get(message.action);
 
                     // 存在回调
-                    client.log('[responeMessage]', '这是一条请求消息: ', message.requestId, 'event: ', !!event);
+                    client.log('[message-request]', '这是一条请求消息:', message.requestId, 'event:', !!event);
 
                     // 结果
                     let body = null;
@@ -63,7 +61,7 @@ export function clientSocketMessageMiddleware(): ClientMiddleware {
                         }
                     }
 
-                    client.sendMessage({
+                    client.send({
                         action: message.action,
                         requestId: message.requestId,
                         type: 'response',
@@ -75,7 +73,7 @@ export function clientSocketMessageMiddleware(): ClientMiddleware {
             }
 
             // 普通消息，不处理
-            client.log('[message-data]', '不处理', message.requestId);
+            client.log('[message]', '收到消息不处理', message.requestId);
         }
         next();
     };
