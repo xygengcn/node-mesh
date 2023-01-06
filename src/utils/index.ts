@@ -1,3 +1,5 @@
+import { SocketMessage } from '@/typings/message';
+import Message from 'amp-message';
 import safeStringify from 'json-stringify-safe';
 /**
  * 生成随机字符串
@@ -91,4 +93,16 @@ export function compose(middlewares: Array<Function>) {
             );
         }
     };
+}
+
+/**
+ * 解析消息体
+ * @returns
+ */
+export function parseMessage(data: Buffer | unknown): SocketMessage | undefined {
+    const messages = data && new Message(data);
+    const message: SocketMessage = messages?.args?.[0];
+    if (typeof message === 'object' && message.msgId) {
+        return message;
+    }
 }

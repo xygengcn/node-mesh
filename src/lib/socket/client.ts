@@ -1,10 +1,13 @@
 import { clientSocketBindMiddleware } from '@/middlewares/client-bind';
 import { clientSocketMessageMiddleware } from '@/middlewares/client-message';
-import { ClientMiddleware, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketMessage, SocketResponseAction, SocketSendMessage } from '@/typings/socket';
+import { SocketType } from '@/typings/enum';
+import { SocketMessage, SocketMessageType } from '@/typings/message';
+import { ClientMiddleware, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketResponseAction } from '@/typings/socket';
 import { compose, parseError, stringifyError, uuid } from '@/utils';
 import { Stream } from 'amp';
 import Message from 'amp-message';
-import { Socket } from 'net';
+import { Socket, AddressInfo } from 'net';
+import Context from '../context';
 import Emitter from '../emitter';
 
 /**
@@ -12,17 +15,16 @@ import Emitter from '../emitter';
  *
  */
 export default class ClientSocket extends Emitter<ClientSocketEvent> {
+    // id
+    public clientId: string;
     // 状态
     public status: ClientSocketStatus = 'none';
 
-    // 配置
-    public options: ClientSocketOptions = { retry: true, host: '0.0.0.0', port: 31000, type: 'client', id: 'Client', targetId: 'Server' };
-
-    // 数据
-    public body: Buffer | null = null;
-
     // 对象
     public socket!: Socket;
+
+    // 配置
+    public options: ClientSocketOptions = { retry: true, host: '0.0.0.0', port: 31000, type: SocketType.client, clientId: 'Client', targetId: 'Server' };
 
     // 重连配置
     private retryTimeout: NodeJS.Timer | null = null;
@@ -34,17 +36,18 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     private clientRequestTimeoutMap: Map<string, NodeJS.Timer> = new Map();
 
     // 记录response的函数
-    public clientHandleResponseMap: Map<string, { callback: SocketResponseAction; once: boolean }> = new Map();
+    private clientHandleResponseMap: Map<string, SocketResponseAction> = new Map();
 
     // 中间件
-    private middlewares: Map<string, { middlewares: ClientMiddleware[]; plugin: (_this: ClientSocket) => Promise<void> }> = new Map();
+    private middlewares: Map<string, { middlewares: ClientMiddleware[]; plugin: (_this: Context) => Promise<void> }> = new Map();
 
     // 构造
     constructor(options: ClientSocketOptions, socket?: Socket) {
-        const namespace = `clientSocket-${options.type || 'client'}_${options.id}`;
+        const namespace = `Socket-${options.type || SocketType.client}_${options.clientId}`;
         super(namespace);
         // 配置初始化
-        this.options = Object.assign(this.options, options || {});
+        this.setDefaultOptions(options);
+        this.clientId = options.clientId;
         // 初始化
         if (socket && socket instanceof Socket) {
             this.socket = socket;
@@ -215,7 +218,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      */
     public response(action: string, callback: SocketResponseAction) {
         if (typeof action === 'string' && typeof callback === 'function') {
-            this.clientHandleResponseMap.set(action, { callback, once: false });
+            this.clientHandleResponseMap.set(action, callback);
             return;
         }
         throw TypeError('Action is a string type and callback is a function');
@@ -234,6 +237,24 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     }
 
     /**
+     * 获取注册的动作
+     * @param action
+     * @returns
+     */
+    public getResponse(action: string): SocketResponseAction | undefined {
+        return this.clientHandleResponseMap.get(action);
+    }
+
+    /**
+     * 移除注册的动作
+     * @param action
+     * @returns
+     */
+    public removeResponse(action: string) {
+        return this.clientHandleResponseMap.delete(action);
+    }
+
+    /**
      * 返回所有动作的keys
      * @returns
      */
@@ -243,38 +264,45 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
     /**
      * 发送消息
-     * @param message
+     * @param msg
      * @returns
      */
-    public send(message: SocketSendMessage): string {
-        if (!message.action) return '';
+    public send(msg: Partial<SocketMessage>): string {
+        if (!msg.action) return '';
         // 请求时间
         const requestTime = new Date().getTime();
         // 生成唯一id
-        const requestId = message.requestId || this.requestId();
+        const msgId = msg.msgId || this.msgId();
+
+        const addressInfo: AddressInfo = this.socket.address() as AddressInfo;
         // 发送内容
         const socketMessage: SocketMessage = {
-            action: message.action,
-            type: message.type || 'request',
-            body: message.body || {},
-            params: message.params || {},
-            error: stringifyError(message?.error) as any,
+            action: msg.action,
+            type: msg.type || SocketMessageType.request,
+            headers: {
+                host: addressInfo.address,
+                port: addressInfo.port
+            },
+            content: {
+                content: msg.content?.content,
+                developerMsg: stringifyError(msg.content?.developerMsg) as any
+            },
             // 下面的是不能改的
-            requestId,
+            msgId,
             time: requestTime,
             targetId: this.options.targetId,
-            fromId: this.options.id,
-            scene: this.options.type || 'client'
+            fromId: this.clientId,
+            fromType: this.options.type || SocketType.client
         };
         // 发送
         if (socketMessage.action && socketMessage.targetId) {
-            this.debug('[send]', message);
+            this.debug('[send]', msg);
             this.emit('send', socketMessage);
             this.write(socketMessage);
-            return requestId;
+            return msgId;
         } else {
             // action 和 targetId 是必要的
-            this.logError('[send] action and targetId is requred', requestId, socketMessage.action, socketMessage.targetId);
+            this.logError('[send] action and targetId is requred', msgId, socketMessage.action, socketMessage.targetId);
         }
         return '';
     }
@@ -283,26 +311,26 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 封装发送消息
      * @param args
      */
-    private requestMessage(action: string, params: string | number | object, callback: false): void;
-    private requestMessage(action: string, params: string | number | object, callback: (error: Error | null, ...result: any[]) => void): void;
-    private requestMessage(action, params, callback) {
+    private requestMessage(action: string, content: string | number | object, callback: false): void;
+    private requestMessage(action: string, content: string | number | object, callback: (error: Error | null, ...result: any[]) => void): void;
+    private requestMessage(action, content, callback) {
         if (this.socket) {
             // 生成唯一id
-            const requestId = this.requestId();
+            const msgId = this.msgId();
 
             // 消息类型
-            const msgType: SocketMessage['type'] = typeof callback === 'boolean' && callback === false ? 'publish' : 'request';
+            const msgType: SocketMessage['type'] = typeof callback === 'boolean' && callback === false ? SocketMessageType.publish : SocketMessageType.request;
 
             // log
-            this.log('[requestMessage]', 'action:', action, '消息类型:', msgType, '发出消息:', requestId);
+            this.log('[requestMessage]', 'action:', action, '消息类型:', msgType, '发出消息:', msgId);
 
             // 存在回调
             if (callback && typeof callback === 'function') {
                 // 存在计时器要清理掉
                 const clearTimerEvent = () => {
-                    if (this.clientRequestTimeoutMap.has(requestId)) {
-                        clearTimeout(this.clientRequestTimeoutMap.get(requestId));
-                        this.clientRequestTimeoutMap.delete(requestId);
+                    if (this.clientRequestTimeoutMap.has(msgId)) {
+                        clearTimeout(this.clientRequestTimeoutMap.get(msgId));
+                        this.clientRequestTimeoutMap.delete(msgId);
                     }
                 };
                 // 时间超时
@@ -310,19 +338,19 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                     clearTimerEvent();
                     // 回调错误
                     callback(new Error('Timeout'));
-                    this.off(requestId as any, timeoutErrorEvent);
+                    this.off(msgId as any, timeoutErrorEvent);
                 };
                 // 建立五秒回调限制
                 const eventTimeout = setTimeout(timeoutErrorEvent, this.options.timeout || 5000);
 
                 // 保存单次请求计时器
-                this.clientRequestTimeoutMap.set(requestId, eventTimeout);
+                this.clientRequestTimeoutMap.set(msgId, eventTimeout);
 
                 // 收到回调
-                this.once(requestId as any, (error, ...result) => {
+                this.once(msgId as any, (error, ...result) => {
                     clearTimerEvent();
                     // 日志
-                    this.log('[requestMessage]', '收到消息回调:', requestId);
+                    this.log('[requestMessage]', '收到消息回调:', msgId);
 
                     // 需要处理错误信息
                     callback(parseError(error), ...result);
@@ -331,9 +359,11 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
             // 发送
             this.send({
-                params,
+                content: {
+                    content
+                },
                 action,
-                requestId
+                msgId
             });
         }
     }
@@ -342,8 +372,8 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 消息id生成
      * @returns
      */
-    private requestId(): string {
-        return `${this.options.id}-${this.options.targetId}-${new Date().getTime()}-${uuid()}`;
+    private msgId(): string {
+        return `${this.clientId}-${this.options.targetId}-${new Date().getTime()}-${uuid()}`;
     }
 
     /**
@@ -357,7 +387,8 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         this.emit(hook as any, ...(args as any));
         const plugin = this.middlewares.get(hook);
         if (plugin?.plugin) {
-            return plugin.plugin.call(this, this);
+            const ctx = new Context(args[0], this);
+            return plugin.plugin.call(this, ctx);
         }
         return Promise.resolve();
     }
@@ -388,9 +419,6 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         stream.on('data', (buf) => {
             // 日志
             this.log('[data]', '收到消息');
-
-            // 赋值
-            this.body = buf;
 
             // data hook
             this.useHook('data', buf);

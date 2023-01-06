@@ -1,6 +1,9 @@
 import { blueColor, cyanColor, debug, error, log, success } from '@/utils/debug';
 import EventEmitter from 'eventemitter3';
 
+// 日志等级
+type EmitterEventLevel = 'success' | 'log' | 'debug' | 'error';
+
 /**
  * 事件基础
  */
@@ -28,7 +31,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
         Number(process.env.DEBUG_LEVEL || 0) <= 1 && log(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
-        this.emit('debug:log', title, ...args);
+        this.emit('logger', 'log', title, ...args);
     }
 
     /**
@@ -42,7 +45,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
         Number(process.env.DEBUG_LEVEL || 0) <= 0 && debug(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
-        this.emit('debug:debug', title, ...args);
+        this.emit('logger', 'debug', title, ...args);
     }
 
     /**
@@ -56,7 +59,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
         Number(process.env.DEBUG_LEVEL || 0) <= 3 && error(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
-        this.emit('debug:error', title, ...args);
+        this.emit('logger', 'error', title, ...args);
     }
 
     /**
@@ -70,7 +73,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
         Number(process.env.DEBUG_LEVEL || 0) <= 2 && success(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
-        this.emit('debug:success', title, ...args);
+        this.emit('logger', 'error', title, ...args);
     }
 
     /**
@@ -79,7 +82,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param listener
      * @returns
      */
-    public on(event: 'debug:log' | 'debug:success' | 'debug:error', listener: (title: string, ...args: any[]) => void): this;
+    public on(event: 'logger', listener: (level: EmitterEventLevel, title: string, ...args: any[]) => void): this;
     public on<T extends EventEmitter.EventNames<K>>(event: T, listener: EventEmitter.EventListener<K, T>): this;
     public on(event, listener) {
         return super.on(event, listener);
@@ -91,7 +94,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param listener
      * @returns
      */
-    public once(event: 'debug:log' | 'debug:success' | 'debug:error', listener: (title: string, ...args: any[]) => void);
+    public once(event: 'logger', listener: (level: EmitterEventLevel, title: string, ...args: any[]) => void): this;
     public once<T extends EventEmitter.EventNames<K>>(event: T, listener: EventEmitter.EventListener<K, T>);
     public once(event, listener) {
         return super.once(event, listener);
@@ -103,7 +106,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param listener
      * @returns
      */
-    public emit(event: 'debug:log' | 'debug:success' | 'debug:error' | 'debug:debug', title: string, ...args: any[]): boolean;
+    public emit(event: 'logger', level: EmitterEventLevel, title: string, ...args: any[]): boolean;
     public emit<T extends EventEmitter.EventNames<K>>(event: T, ...data: EventEmitter.EventArgs<K, T>): boolean;
     public emit(event, ...data: any) {
         return super.emit(event, ...data);
@@ -115,7 +118,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param listener
      * @returns
      */
-    public off(event: 'debug:log' | 'debug:success' | 'debug:error', listener: (title: string, ...args: any[]) => void): this;
+    public off(event: 'logger', listener: (level: EmitterEventLevel, title: string, ...args: any[]) => void): this;
     public off<T extends EventEmitter.EventNames<K>>(event?: T, listener?: EventEmitter.EventListener<K, T>): this;
     public off(eventName, listener) {
         if (eventName && listener) {

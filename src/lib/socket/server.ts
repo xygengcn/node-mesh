@@ -1,5 +1,7 @@
 import serverBindMiddleware from '@/middlewares/server-bind';
-import { ServerSocketOptions, SocketMessage, SocketResponseAction } from '@/typings/socket';
+import { SocketType } from '@/typings/enum';
+import { SocketMessage } from '@/typings/message';
+import { ServerSocketOptions, SocketResponseAction } from '@/typings/socket';
 import { uuid } from '@/utils';
 import net, { Server, Socket } from 'net';
 import Emitter from '../emitter';
@@ -47,7 +49,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
     // 构造函数
     constructor(options: ServerSocketOptions) {
-        const namespace = `serverSocket-${options.serverId}`;
+        const namespace = `Server-${options.serverId}`;
         super(namespace);
         this.options = Object.assign(this.options, options || {});
         this.status = 'waiting';
@@ -189,9 +191,9 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
             {
                 port: addressInfo.port,
                 host: addressInfo.address,
-                type: 'server',
+                type: SocketType.server,
                 retry: false,
-                id: this.options.serverId,
+                clientId: this.options.serverId,
                 targetId: ''
             },
             socket
@@ -215,7 +217,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
         // 处理消息
         client.on('message', (msg) => {
-            this.log('[server-message]', '服务端收到数据: ', msg?.requestId, 'action:', msg?.action);
+            this.log('[server-message]', '服务端收到数据: ', msg?.msgId, 'action:', msg?.action);
             this.emit('message', msg, client);
         });
     }

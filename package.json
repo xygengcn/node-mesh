@@ -6,9 +6,9 @@
         "build": "rm -rf ./dist && rollup -c rollup.config.js",
         "server": "env-cmd -r .env.js -e development nodemon examples/server.dev.ts",
         "dev": "env-cmd -r .env.js -e development nodemon examples/client.dev.ts",
-        "test": "env-cmd -r .env.js -e test mocha test/**.test.ts --timeout 5000",
-        "test:dev": "env-cmd -r .env.js -e development mocha test/**.test.ts --timeout 15000",
-        "pref": "env-cmd -r .env.js -e test mocha test/pref.test.ts -t 5000"
+        "test": "env-cmd -r .env.js -e test mocha test/**.test.ts",
+        "test:dev": "env-cmd -r .env.js -e development mocha test/**.test.ts",
+        "pref": "env-cmd -r .env.js -e test mocha test/pref.test.ts"
     },
     "homepage": "https://xygeng.cn",
     "keywords": [

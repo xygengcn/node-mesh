@@ -1,6 +1,8 @@
+import Context from '@/lib/context';
 import { Socket } from 'net';
 import { ClientSocket } from '..';
-import { ClientSocketBindStatus } from './enum';
+import { SocketBindStatus, SocketType } from './enum';
+import { SocketMessage } from './message';
 
 /**
  * 客户端状态 空，请求连接，绑定中，在线，重试，错误，下线
@@ -35,7 +37,7 @@ export interface ClientSocketEvent extends NetSocketEvent {
  * 客户端连接配置
  */
 export interface ClientSocketOptions {
-    id: string; // 自己id
+    clientId: string; // 自己id
     targetId: string; // 目标id
     secret?: string; // 密钥 用来验证密钥
     port: number; // 端口 default：31000
@@ -43,7 +45,7 @@ export interface ClientSocketOptions {
     retry?: boolean; // 是否重连 default：true
     retryDelay?: number; // 是否重连 default：3000
     timeout?: number; // 请求超时 default: 5000
-    type?: 'client' | 'server'; // 用来判断操作端是客户端还是服务端
+    type?: SocketType; // 用来判断操作端是客户端还是服务端
 }
 
 /**
@@ -55,7 +57,7 @@ export interface ClientSocketBindOptions {
     secret?: string; // 密钥 用来验证密钥
     host: string; // 目标地址
     port: number; // 目标端口
-    status: ClientSocketBindStatus; // 绑定状态
+    status: SocketBindStatus; // 绑定状态
 }
 
 /**
@@ -63,30 +65,8 @@ export interface ClientSocketBindOptions {
  */
 export interface ServerSocketBindResult {
     socketId: string;
-    status: ClientSocketBindStatus; // 绑定状态
+    status: SocketBindStatus; // 绑定状态
 }
-
-/**
- * 消息体结构
- */
-
-export type SocketMessage<B = any, R = any> = {
-    requestId: string; // 请求id 唯一值
-    time: number; // 消息时间
-    action: string; // 动作
-    body: B; // 返回体
-    params: R; // 请求参数
-    error: Error | null; // 错误
-    targetId: string; // 目标id
-    fromId: string; // 来自id
-    type: 'request' | 'publish' | 'response'; // 消息类型，请求或者发布，请求有消息回调，发布没有回调
-    scene: 'client' | 'server'; // 判断是谁发的
-};
-
-/**
- * 发送的消息体结构
- */
-export type SocketSendMessage = Partial<Pick<SocketMessage, 'body' | 'error' | 'params' | 'requestId' | 'type'>> & Pick<SocketMessage, 'action'>;
 
 /**
  * 服务端配置
@@ -101,9 +81,9 @@ export interface ServerSocketOptions {
 /**
  * 注册动作函数
  */
-export type SocketResponseAction<T extends any = any> = (params: SocketMessage['params']) => T;
+export type SocketResponseAction<T extends any = any> = (params: any) => T;
 
 /**
  * 中间件
  */
-export type ClientMiddleware = ((client: ClientSocket, next: () => void) => void) | ((client: ClientSocket, next: () => void) => Promise<void>);
+export type ClientMiddleware = ((context: Context, next: () => void) => void) | ((context: Context, next: () => void) => Promise<void>);
