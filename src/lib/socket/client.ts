@@ -9,6 +9,7 @@ import Message from 'amp-message';
 import { Socket, AddressInfo } from 'net';
 import Context from '../context';
 import Emitter from '../emitter';
+import BaseError from '../error';
 
 /**
  * 客户端
@@ -178,7 +179,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         this.log('[request]', '客户端请求，action:', action);
 
         if (!action || typeof action !== 'string') {
-            return Promise.reject(Error('Action is required'));
+            return Promise.reject(new BaseError(30001, 'Action is required'));
         }
 
         // 先检测本地是否注册
@@ -231,11 +232,11 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         this.logError('[request]', '发送失败', 'socket状态:', this.status);
 
         // 返回失败
-        this.emit('error', new Error("Socket isn't connect !"));
+        this.emit('error', new BaseError(30002, "Socket isn't connect !"));
         if (typeof callback === 'function') {
-            callback(Error("Socket isn't connect !"));
+            callback(new BaseError(30002, "Socket isn't connect !"));
         } else {
-            return Promise.reject(Error("Socket isn't connect !"));
+            return Promise.reject(new BaseError(30002, "Socket isn't connect !"));
         }
     }
 
@@ -369,7 +370,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                 const timeoutErrorEvent = () => {
                     clearTimerEvent();
                     // 回调错误
-                    callback(new Error('Timeout'));
+                    callback(new BaseError(30003, 'Request Timeout'));
                     this.off(msgId as any, timeoutErrorEvent);
                 };
                 // 建立五秒回调限制
@@ -434,7 +435,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         this.socket.write(message.toBuffer(), (e) => {
             if (e) {
                 this.logError('[write]', '发送失败', e, ...args);
-                this.emit('error', e || Error('write error'));
+                this.emit('error', e || new BaseError(30004, 'Socket write error'));
             }
         });
     }

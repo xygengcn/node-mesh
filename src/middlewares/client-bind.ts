@@ -1,4 +1,5 @@
 import Context from '@/lib/context';
+import BaseError from '@/lib/error';
 import { SocketBindStatus } from '@/typings/enum';
 import { ClientMiddleware, ClientSocketBindOptions } from '@/typings/socket';
 import { AddressInfo } from 'net';
@@ -34,7 +35,7 @@ export function clientSocketBindMiddleware(): ClientMiddleware {
 
         ctx.debug('[bindServer]', '开始绑定验证服务端', content);
         if (ctx.client.options.type === 'server') {
-            throw new Error('server 不存在 bind 方法');
+            throw new BaseError(30008, 'Server 不存在 bind 方法');
         }
         // 等待绑定
         if (ctx.client.status === 'binding') {
@@ -50,7 +51,7 @@ export function clientSocketBindMiddleware(): ClientMiddleware {
                 // 绑定失败
                 if (error || result.status !== SocketBindStatus.success) {
                     ctx.logError('[bind:error] ', ctx.client.status, result, error);
-                    ctx.client.disconnect(error || new Error('Client bind error', { cause: { result, error } }));
+                    ctx.client.disconnect(error || new BaseError(30009, error || 'Client bind error'));
                     return;
                 }
 

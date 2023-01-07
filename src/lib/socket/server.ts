@@ -6,6 +6,7 @@ import { uuid } from '@/utils';
 import net, { Server, Socket } from 'net';
 import Context from '../context';
 import Emitter from '../emitter';
+import BaseError from '../error';
 import ClientSocket from './client';
 
 /**
@@ -119,7 +120,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         this.log('[request]', '服务端请求，action:', action);
 
         if (!action || typeof action !== 'string') {
-            return Promise.reject(Error('Action is required'));
+            return Promise.reject(new BaseError(30001, 'Action is required'));
         }
 
         // 先检测本地是否注册
@@ -139,7 +140,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
                 });
             }
         }
-        return Promise.reject(Error('Request is not exist'));
+        return Promise.reject(new BaseError(30005, 'Request is not exist'));
     }
 
     /**
@@ -229,7 +230,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
             // 客户端的动作
             if (responseAction.type === SocketType.client && responseAction.socketId) {
                 if (this.status !== 'running') {
-                    callback(Error('Server is not running'), null);
+                    callback(new BaseError(30006, 'Server is not running'), null);
                     return;
                 }
                 // 有此客户端
@@ -237,7 +238,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
                 // 客户端不在线
                 if (socket?.client.status !== 'online') {
-                    callback(Error('Action is not active'), null);
+                    callback(new BaseError(30007, 'Action is not active'), null);
                     return;
                 }
 
@@ -256,7 +257,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
             }
             return;
         }
-        callback(Error('Action is not exist'), null);
+        callback(new BaseError(30001, 'Action is not exist'), null);
     }
 
     /**
