@@ -1,6 +1,6 @@
 import type ServerSocket from '../lib/socket/server';
 import { ClientMiddleware, ClientSocketBindOptions } from '@/typings/socket';
-import { SocketBindStatus } from '@/typings/enum';
+import { SocketBindStatus, SocketType } from '@/typings/enum';
 import { SocketMessage, SocketMessageType } from '@/typings/message';
 import Context from '@/lib/context';
 
@@ -31,7 +31,26 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
                     // 校验密钥
                     if (!server.options.secret || server.options.secret === bind.secret) {
                         // 绑定成功
-                        server.onlineClients.set(socketId, ctx.client);
+                        const responseActions = new Set(bind.responseActions || []);
+                        server.onlineClients.set(socketId, { client: ctx.client, responseActions });
+
+                        // 开始注册动作
+                        responseActions.forEach((actionKey) => {
+                            // 如果注册过，则移除
+                            if (server.responseAction.has(actionKey)) {
+                                const response = server.responseAction.get(actionKey);
+                                // 服务端优先级高
+                                if (response?.type === SocketType.server) {
+                                    return;
+                                }
+                                server.debug('[response]', '移除注册的动作：', actionKey, '客户端：', response?.socketId || '');
+                            }
+                            // 注册新动作
+                            server.debug('[response]', '注册新动作：', actionKey, '客户端：', socketId);
+                            server.responseAction.set(actionKey, { type: SocketType.client, socketId });
+                        });
+
+                        // 状态在线
                         ctx.client.status = 'online';
                         // log
                         server.success('[server-bind]', `绑定客户度端成功, 由${tempSocketId}正式切换到${socketId}`);

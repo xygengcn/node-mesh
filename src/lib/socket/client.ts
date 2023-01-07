@@ -36,7 +36,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     private clientRequestTimeoutMap: Map<string, NodeJS.Timer> = new Map();
 
     // 记录response的函数
-    private clientHandleResponseMap: Map<string, SocketResponseAction> = new Map();
+    private responseAction: Map<string, SocketResponseAction> = new Map();
 
     // 中间件
     private middlewares: Map<string, { middlewares: ClientMiddleware[]; plugin: (_this: Context) => Promise<void> }> = new Map();
@@ -166,8 +166,6 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      *
      * 俗称约定：action为socket:*为隐藏指令
      *
-     * @todo 先查找本地有没有注册，上层实现
-     *
      *
      * @param action
      * @param params
@@ -177,11 +175,15 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     public request<T = any>(action: string, params: string | number | object): Promise<T>;
     public async request(action, params, callback?): Promise<any> {
         // 日志
-        this.log('[request]', 'action:', action);
+        this.log('[request]', '客户端请求，action:', action);
+
+        if (!action || typeof action !== 'string') {
+            return Promise.reject(Error('Action is required'));
+        }
 
         // 先检测本地是否注册
 
-        if (this.clientHandleResponseMap.has(action)) {
+        if (this.responseAction.has(action)) {
             const responseAction: SocketResponseAction = this.getResponse(action) as SocketResponseAction;
             if (typeof callback === 'function') {
                 let developerMsg: Error | null = null;
@@ -244,7 +246,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      */
     public response(action: string, callback: SocketResponseAction) {
         if (typeof action === 'string' && typeof callback === 'function') {
-            this.clientHandleResponseMap.set(action, callback);
+            this.responseAction.set(action, callback);
             return;
         }
         throw TypeError('Action is a string type and callback is a function');
@@ -254,7 +256,11 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 断开链接
      */
     public disconnect(error?: Error) {
-        this.logError('[disconnect]', this.status, error);
+        if (error) {
+            this.logError('[disconnect]', this.status, error);
+        } else {
+            this.debug('[disconnect]', this.status);
+        }
         this.emit('disconnect', this.socket);
         this.socket?.end();
         this.socket?.destroy(error);
@@ -268,7 +274,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @returns
      */
     public getResponse(action: string): SocketResponseAction | undefined {
-        return this.clientHandleResponseMap.get(action);
+        return this.responseAction.get(action);
     }
 
     /**
@@ -277,15 +283,15 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @returns
      */
     public removeResponse(action: string) {
-        return this.clientHandleResponseMap.delete(action);
+        return this.responseAction.delete(action);
     }
 
     /**
      * 返回所有动作的keys
      * @returns
      */
-    public responseKeys() {
-        return this.clientHandleResponseMap.keys();
+    public responseKeys(): string[] {
+        return Array.from(this.responseAction.keys());
     }
 
     /**

@@ -1,9 +1,10 @@
 import serverBindMiddleware from '@/middlewares/server-bind';
 import { SocketType } from '@/typings/enum';
-import { SocketMessage } from '@/typings/message';
-import { ServerSocketOptions, SocketResponseAction } from '@/typings/socket';
+import { SocketMessage, SocketMessageType } from '@/typings/message';
+import { ClientMiddleware, ServerSocketOptions, SocketResponseAction } from '@/typings/socket';
 import { uuid } from '@/utils';
 import net, { Server, Socket } from 'net';
+import Context from '../context';
 import Emitter from '../emitter';
 import ClientSocket from './client';
 
@@ -26,6 +27,28 @@ export type ServerSocketEvent = {
 };
 
 /**
+ * 服务端的动作注册
+ */
+type ServerSocketResponse =
+    | {
+          callback: SocketResponseAction;
+          type: SocketType.server;
+          socketId?: string;
+      }
+    | {
+          type: SocketType.client;
+          socketId: string;
+      };
+
+/**
+ * 服务端上线的客户端
+ */
+interface ServerSocketOnlineClient {
+    client: ClientSocket;
+    responseActions: Set<string>;
+}
+
+/**
  * 服务端
  */
 export default class ServerSocket extends Emitter<ServerSocketEvent> {
@@ -39,13 +62,13 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     public options: ServerSocketOptions = { port: 31000, host: '0.0.0.0', serverId: 'Server' };
 
     // 客户端
-    public onlineClients: Map<string, ClientSocket> = new Map();
+    public onlineClients: Map<string, ServerSocketOnlineClient> = new Map();
 
     // 临时客户端
     public connectClients: Map<string, ClientSocket> = new Map();
 
     // 记录注册的函数 response：是否回调给客户端
-    private serverHandleActionMap: Map<string, { action: SocketResponseAction; response: boolean }> = new Map();
+    public responseAction: Map<string, ServerSocketResponse> = new Map();
 
     // 构造函数
     constructor(options: ServerSocketOptions) {
@@ -64,7 +87,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         this.socket.close();
         this.status = 'stop';
         // 停止后把所有的客户端断开
-        this.onlineClients.forEach((c) => c.disconnect());
+        this.onlineClients.forEach((c) => c.client.disconnect());
         this.connectClients.forEach((c) => c.disconnect());
     }
 
@@ -80,25 +103,43 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     }
 
     /**
-     * 发送消息
-     * @param clientId
+     * 请求消息
+     *
+     * 俗称约定：action为socket:*为隐藏指令
+     *
+     *
      * @param action
-     * @param data
-     * @returns
+     * @param params
+     * @param callback
      */
-    public request<T = any>(clientId: string, action: string, data: string | number | object): Promise<T> {
-        if (this.status === 'running') {
-            if (clientId && action) {
-                const socketId = `${this.options.serverId}-${clientId}`;
-                const socket = this.onlineClients.get(socketId);
-                if (socket) {
-                    return socket.request(action, data);
-                }
-                return Promise.reject(Error('client is not binding'));
-            }
-            return Promise.reject(Error('clientId and Action is required'));
+    public request<T extends any = any>(action: string, params: string | number | object, callback: (error: Error | null, result: T) => void): void;
+    public request<T = any>(action: string, params: string | number | object): Promise<T>;
+    public async request(action, params, callback?): Promise<any> {
+        // 日志
+        this.log('[request]', '服务端请求，action:', action);
+
+        if (!action || typeof action !== 'string') {
+            return Promise.reject(Error('Action is required'));
         }
-        return Promise.reject(Error('server is not running'));
+
+        // 先检测本地是否注册
+        if (this.responseAction.has(action)) {
+            if (typeof callback === 'function') {
+                this.handleServerAction(action, params, callback);
+                return;
+            } else {
+                return new Promise(async (resolve, reject) => {
+                    this.handleServerAction(action, params, (error, result) => {
+                        if (error) {
+                            reject(error);
+                        } else {
+                            resolve(result);
+                        }
+                    });
+                });
+            }
+        }
+        return Promise.reject(Error('Request is not exist'));
     }
 
     /**
@@ -107,23 +148,15 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
      * @param callback
      */
     public response(action: string, callback: SocketResponseAction) {
-        this.serverHandleActionMap.set(action, { action: callback, response: true });
+        this.responseAction.set(action, { callback, type: SocketType.server });
     }
-
-    // /**
-    //  * 移除回答事件
-    //  * @param action
-    //  */
-    // public removeResponse(action: string) {
-    //     this.serverHandleActionMap.delete(action);
-    // }
 
     /**
      * 重新设置配置
      *
      * @param options
      */
-    public setDefaultOptions(options: Partial<Pick<ServerSocketOptions, 'secret'>>) {
+    public configure(options: Partial<Pick<ServerSocketOptions, 'secret'>>) {
         Object.assign(this.options, options || {});
     }
 
@@ -173,6 +206,60 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     }
 
     /**
+     * 处理动作
+     * @param action
+     * @param params
+     * @param callback
+     */
+    private async handleServerAction(action: string, params: string | number | object, callback: (error: Error | null, result: any) => void) {
+        const responseAction: ServerSocketResponse = this.responseAction.get(action) as ServerSocketResponse;
+        if (responseAction) {
+            // 服务端的动作
+            if (responseAction.type === SocketType.server) {
+                let developerMsg: Error | null = null;
+                let result = null;
+                try {
+                    result = await responseAction.callback.call(undefined, params || {});
+                } catch (error: any) {
+                    developerMsg = error;
+                }
+                callback(developerMsg, result);
+                return;
+            }
+            // 客户端的动作
+            if (responseAction.type === SocketType.client && responseAction.socketId) {
+                if (this.status !== 'running') {
+                    callback(Error('Server is not running'), null);
+                    return;
+                }
+                // 有此客户端
+                const socket = this.onlineClients.get(responseAction.socketId);
+
+                // 客户端不在线
+                if (socket?.client.status !== 'online') {
+                    callback(Error('Action is not active'), null);
+                    return;
+                }
+
+                // 客户端有这个动作
+                if (socket && socket.responseActions.has(action) && socket.client.status === 'online') {
+                    // 请求客户端
+                    socket.client
+                        .request(action, params)
+                        .then((result) => {
+                            callback(null, result);
+                        })
+                        .catch((e) => {
+                            callback(e, null);
+                        });
+                }
+            }
+            return;
+        }
+        callback(Error('Action is not exist'), null);
+    }
+
+    /**
      * 处理客户端事件
      * @param socket Socket
      */
@@ -205,14 +292,12 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         // 处理绑定事件
         client.use('data', serverBindMiddleware(this, tempSocketId));
 
+        // 处理请求事件
+        client.use('data', this.handleClientRequestEvent());
+
         // 消息通知
         client.on('data', (buf) => {
             this.emit('data', buf, client);
-        });
-
-        // 注册事件
-        this.serverHandleActionMap.forEach((value, action) => {
-            client.response(action, value.action);
         });
 
         // 处理消息
@@ -220,5 +305,33 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
             this.log('[server-message]', '服务端收到数据: ', msg?.msgId, 'action:', msg?.action);
             this.emit('message', msg, client);
         });
+    }
+
+    /**
+     * 处理客户端请求事件
+     */
+    private handleClientRequestEvent(): ClientMiddleware {
+        return async (ctx: Context, next) => {
+            const message: SocketMessage = ctx.toJson();
+            if (message && typeof message === 'object' && message.action && message.type === 'request' && message.targetId === ctx.id && message.msgId) {
+                this.debug('[client-request]', '来自客户端的请求:', message);
+                if (this.responseAction.has(message.action)) {
+                    // 注册方法
+                    this.handleServerAction(message.action, message.content?.content || '', (developerMsg, content) => {
+                        ctx.json({
+                            action: message.action,
+                            msgId: message.msgId,
+                            type: SocketMessageType.response,
+                            content: {
+                                content,
+                                developerMsg
+                            }
+                        });
+                    });
+                    return;
+                }
+            }
+            next();
+        };
     }
 }

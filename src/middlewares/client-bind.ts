@@ -28,7 +28,8 @@ export function clientSocketBindMiddleware(): ClientMiddleware {
             host: addressInfo.address,
             clientId: ctx.id,
             serverId: ctx.client.options.targetId,
-            secret: ctx.client.options.secret
+            secret: ctx.client.options.secret,
+            responseActions: ctx.client.responseKeys()
         };
 
         ctx.debug('[bindServer]', '开始绑定验证服务端', content);

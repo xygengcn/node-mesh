@@ -34,7 +34,7 @@ describe('客户端和服务端的绑定测试', () => {
 
     describe('测试客户端和服务端 密钥校验', () => {
         it('bind status should be 1', (done) => {
-            server.setDefaultOptions({ secret: '1111' });
+            server.configure({ secret: '1111' });
             const client = new ClientSocket({ port: 3000, host: '0.0.0.0', clientId: 'client-test-' + index++, targetId: 'server1', secret: '1111' });
             client.once('error', (e) => {
                 client.off();
@@ -69,7 +69,7 @@ describe('客户端和服务端的绑定测试', () => {
 
     describe('测试客户端和服务端 密钥错误情况', () => {
         it('bind status should be 3', (done) => {
-            server.setDefaultOptions({ secret: '1111' });
+            server.configure({ secret: '1111' });
             const client = new ClientSocket({ port: 3000, host: '0.0.0.0', clientId: 'client-test-' + index++, targetId: 'server1', secret: '2222' });
             client.connect();
             client.once('error', () => {});

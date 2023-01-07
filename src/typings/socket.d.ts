@@ -1,6 +1,5 @@
 import Context from '@/lib/context';
 import { Socket } from 'net';
-import { ClientSocket } from '..';
 import { SocketBindStatus, SocketType } from './enum';
 import { SocketMessage } from './message';
 
@@ -58,6 +57,7 @@ export interface ClientSocketBindOptions {
     host: string; // 目标地址
     port: number; // 目标端口
     status: SocketBindStatus; // 绑定状态
+    responseActions: string[]; // 注册的动作
 }
 
 /**
