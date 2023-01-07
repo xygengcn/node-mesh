@@ -19,7 +19,7 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
                 const bind: ClientSocketBindOptions = message.content?.content || {};
 
                 // 绑定目标id
-                ctx.client.setDefaultOptions({ targetId: bind.clientId });
+                ctx.client.configure({ targetId: bind.clientId });
 
                 // 生成socketId
                 const socketId = `${server.options.serverId}-${bind.clientId}`;

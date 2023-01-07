@@ -46,7 +46,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         const namespace = `Socket-${options.type || SocketType.client}_${options.clientId}`;
         super(namespace);
         // 配置初始化
-        this.setDefaultOptions(options);
+        this.configure(options);
         this.clientId = options.clientId;
         // 初始化
         if (socket && socket instanceof Socket) {
@@ -85,7 +85,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      *
      * @param options
      */
-    public setDefaultOptions(options: Partial<Pick<ClientSocketOptions, 'targetId' | 'timeout' | 'retryDelay'>>) {
+    public configure(options: Partial<Pick<ClientSocketOptions, 'targetId' | 'timeout' | 'retryDelay'>>) {
         Object.assign(this.options, options || {});
     }
 
@@ -175,9 +175,35 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      */
     public request<T extends any = any>(action: string, params: string | number | object, callback: (error: Error | null, result: T) => void): void;
     public request<T = any>(action: string, params: string | number | object): Promise<T>;
-    public request(action, params, callback?): any {
+    public async request(action, params, callback?): Promise<any> {
         // 日志
         this.log('[request]', 'action:', action);
+
+        // 先检测本地是否注册
+
+        if (this.clientHandleResponseMap.has(action)) {
+            const responseAction: SocketResponseAction = this.getResponse(action) as SocketResponseAction;
+            if (typeof callback === 'function') {
+                let developerMsg: Error | null = null;
+                let result = null;
+                try {
+                    result = await responseAction(params || {});
+                } catch (error: any) {
+                    developerMsg = error;
+                }
+                callback(developerMsg, result);
+                return;
+            } else {
+                return new Promise(async (resolve, reject) => {
+                    try {
+                        const result = await responseAction(params || {});
+                        resolve(result);
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+            }
+        }
 
         // 正常情况,没有callback返回promise
         // 只有在线或者系统消息才能发出去
