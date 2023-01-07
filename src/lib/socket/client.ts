@@ -107,7 +107,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             return;
         }
 
-        this.log('[create-connect]', '创建连接', this.options);
+        this.debug('[create-connect]', '创建连接', this.options);
 
         this.status = 'pending';
 
@@ -119,7 +119,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
         // 链接事件
         this.socket.once('connect', () => {
-            this.log('[connect]', '连接到服务端', this.socket.address(), this.socket.localAddress);
+            this.debug('[connect]', '连接到服务端', this.socket.address(), this.socket.localAddress);
             // 解除手动限制，手动断开后手动连接后的自动重连
             this.isManualClose = false;
 
@@ -142,7 +142,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         if (options && typeof options === 'object') {
             Object.assign(this.options, options);
         }
-        this.log('[reconnect]', '准备重连', 'status:', this.status, 'isManualClose:', this.isManualClose);
+        this.debug('[reconnect]', '准备重连', 'status:', this.status, 'isManualClose:', this.isManualClose);
         if (this.status === 'error' || this.status === 'offline') {
             // 回调
             this.emit('reconnect', this.socket);
@@ -254,7 +254,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 断开链接
      */
     public disconnect(error?: Error) {
-        this.log('[disconnect]', this.status, error);
+        this.logError('[disconnect]', this.status, error);
         this.emit('disconnect', this.socket);
         this.socket?.end();
         this.socket?.destroy(error);
@@ -444,7 +444,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         this.socket.pipe(stream);
         stream.on('data', (buf) => {
             // 日志
-            this.log('[data]', '收到消息');
+            this.debug('[data]', '收到消息');
 
             // data hook
             this.useHook('data', buf);
@@ -465,7 +465,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
         // socket关闭的事件
         this.socket.once('close', () => {
-            this.log('[close]');
+            this.debug('[close]');
             this.status = 'offline';
             this.emit('close', this.socket);
 
@@ -489,7 +489,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
          * 自己disconnect不会触发
          */
         this.socket.once('end', () => {
-            this.log('[end]');
+            this.debug('[end]');
             this.status = 'offline';
             this.emit('end', this.socket);
 
@@ -520,7 +520,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     private autoRetryConnect() {
         // 错误状态，下线状态，自动配置，客户端创建连接，不是手动关闭，不在定时中
         if ((this.status === 'error' || this.status === 'offline') && this.options.retry && this.options.type === 'client' && !this.isManualClose && !this.retryTimeout) {
-            this.log('[autoRetryConnect]', '自动重连', this.status, this.options, this.isManualClose);
+            this.debug('[autoRetryConnect]', '自动重连', this.status, this.options, this.isManualClose);
             this.retryTimeout = setTimeout(() => {
                 this.reconnect();
                 // 开始重连，删掉重连定时

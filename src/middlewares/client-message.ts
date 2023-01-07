@@ -26,7 +26,7 @@ export function clientSocketMessageMiddleware(): ClientMiddleware {
                 // 自己发出request请求，别人回答了，收到回调 如果是在线状态需要校验targetId
                 if (message.type === 'response') {
                     // 日志
-                    ctx.log('[message-response]', '这是一条回调消息:', message.msgId);
+                    ctx.debug('[message-response]', '这是一条回调消息:', message.msgId);
                     // 触发请求回调
                     ctx.client.emit(message.msgId as any, message.content.developerMsg, message.content.content);
                     return;
@@ -38,7 +38,7 @@ export function clientSocketMessageMiddleware(): ClientMiddleware {
                     const event = ctx.client.getResponse(message.action);
 
                     // 存在回调
-                    ctx.log('[message-request]', '这是一条请求消息:', message.msgId, 'event:', !!event);
+                    ctx.debug('[message-request]', '这是一条请求消息:', message.msgId, 'event:', !!event);
 
                     // 结果
                     let content = null;
@@ -70,7 +70,7 @@ export function clientSocketMessageMiddleware(): ClientMiddleware {
             }
 
             // 普通消息，不处理
-            ctx.client.log('[message]', '收到消息不处理', message.msgId);
+            ctx.debug('[message]', '收到消息不处理', message.msgId);
         }
         next();
     };
