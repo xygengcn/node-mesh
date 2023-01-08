@@ -60,7 +60,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     private server!: Server;
 
     // 配置
-    private options: ServerSocketOptions = { port: 31000, host: '0.0.0.0', serverId: 'Server' };
+    private options: ServerSocketOptions = { port: 31000, serverId: 'Server' };
 
     // 构造函数
     constructor(options: ServerSocketOptions) {

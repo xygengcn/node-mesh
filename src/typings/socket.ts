@@ -114,7 +114,6 @@ export interface ServerSocketOptions {
     serverId: string; // 名称
     secret?: string; // 密钥
     port: number; // 端口 default：31000
-    host: string; // 地址 default：0.0.0.0
 }
 
 /**
