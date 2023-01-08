@@ -15,16 +15,35 @@ import BaseError from '../error';
  *
  */
 export default class ClientSocket extends Emitter<ClientSocketEvent> {
-    // id
-    public clientId: string;
     // 状态
     public status: ClientSocketStatus = 'none';
 
     // 对象
     public socket!: Socket;
 
+    /**
+     * 目标id
+     */
+    public get targetId() {
+        return this.options?.targetId || '';
+    }
+
+    /**
+     * 客户端id
+     */
+    public get clientId() {
+        return this.options?.clientId || '';
+    }
+
+    /**
+     * 是不是服务端的客户端
+     */
+    public get isServer(): boolean {
+        return this.options.type === SocketType.server;
+    }
+
     // 配置
-    public options: ClientSocketOptions = { retry: true, host: '0.0.0.0', port: 31000, type: SocketType.client, clientId: 'Client', targetId: 'Server' };
+    private options: ClientSocketOptions = { retry: true, host: '0.0.0.0', port: 31000, type: SocketType.client, clientId: 'Client', targetId: 'Server' };
 
     // 重连配置
     private retryTimeout: NodeJS.Timer | null = null;
@@ -41,20 +60,13 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     // 中间件
     private middlewares: Map<string, { middlewares: ClientMiddleware[]; plugin: (_this: Context) => Promise<void> }> = new Map();
 
-    /**
-     * 目标id
-     */
-    public get targetId() {
-        return this.options.targetId || '';
-    }
-
     // 构造
     constructor(options: ClientSocketOptions, socket?: Socket) {
         const namespace = `Socket-${options.type || SocketType.client}_${options.clientId}`;
         super(namespace);
         // 配置初始化
         this.configure(options);
-        this.clientId = options.clientId;
+
         // 初始化
         if (socket && socket instanceof Socket) {
             this.socket = socket;
@@ -67,7 +79,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         }
 
         // 绑定中间件
-        this.use('connect', clientSocketBindMiddleware());
+        this.use('connect', clientSocketBindMiddleware(this.options.secret));
 
         // 处理消息
         this.use('data', clientSocketMessageMiddleware());
@@ -261,9 +273,9 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      */
     public disconnect(error?: Error) {
         if (error) {
-            this.logError('[disconnect]', this.clientId, this.status, error);
+            this.logError('[disconnect]', '客户端断开', this.status, error);
         } else {
-            this.debug('[disconnect]', this.clientId, this.status);
+            this.debug('[disconnect]', '客户端断开', this.status);
         }
         // 结束连接
         this.socket?.end(() => {
@@ -331,8 +343,8 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             // 下面的是不能改的
             msgId,
             time: requestTime,
-            targetId: this.options.targetId,
-            fromId: this.clientId,
+            targetId: this.targetId, // 接收端
+            fromId: this.clientId, // 发送端
             fromType: this.options.type || SocketType.client
         };
         // 发送

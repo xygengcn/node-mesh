@@ -14,7 +14,7 @@ import { AddressInfo } from 'net';
  *
  * @returns
  */
-export function clientSocketBindMiddleware(): ClientMiddleware {
+export function clientSocketBindMiddleware(secret: string | undefined): ClientMiddleware {
     return (ctx: Context, next) => {
         // 等待绑定状态
         ctx.client.status = 'binding';
@@ -28,13 +28,15 @@ export function clientSocketBindMiddleware(): ClientMiddleware {
             port: addressInfo.port,
             host: addressInfo.address,
             clientId: ctx.id,
-            serverId: ctx.client.options.targetId,
-            secret: ctx.client.options.secret,
+            serverId: ctx.client.targetId,
+            secret: secret,
             responseActions: ctx.client.responseKeys()
         };
 
         ctx.debug('[bindServer]', '开始绑定验证服务端', content);
-        if (ctx.client.options.type === 'server') {
+
+        // 防止客户端绑定
+        if (ctx.client.isServer) {
             throw new BaseError(30008, 'Server 不存在 bind 方法');
         }
         // 等待绑定
@@ -67,7 +69,7 @@ export function clientSocketBindMiddleware(): ClientMiddleware {
                         content: {
                             content: null,
                             clientId: ctx.id,
-                            serverId: ctx.client.options.targetId,
+                            serverId: ctx.client.targetId,
                             event: SocketSysEvent.socketOnline
                         }
                     }

@@ -21,14 +21,14 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
                 ctx.client.configure({ targetId: bind.clientId });
 
                 // 生成socketId
-                const socketId = `${server.options.serverId}-${bind.clientId}`;
+                const socketId = `${server.serverId}-${bind.clientId}`;
 
                 server.debug('[server-bind]', ' 收到客户端绑定信息', 'socketId:', socketId, 'requestId:', message.msgId);
 
                 // 验证身份
-                if (bind.serverId === server.options.serverId) {
+                if (bind.serverId === server.serverId) {
                     // 校验密钥
-                    if (!server.options.secret || server.options.secret === bind.secret) {
+                    if (server.checkSecret(bind.secret)) {
                         // 绑定成功
                         const responseActions = new Set(bind.responseActions || []);
                         server.onlineClients.set(socketId, { client: ctx.client, responseActions });
@@ -73,7 +73,7 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
                     }
 
                     // 检验失败
-                    server.logError('[server-bind]', 'auth验证失败', bind, server.options);
+                    server.logError('[server-bind]', 'auth验证失败', bind);
                     ctx.json({
                         action: message.action,
                         msgId: message.msgId,
@@ -89,7 +89,7 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
                 }
 
                 // 返回失败信息
-                server.logError('[server-bind] serverID验证失败', bind, server.options);
+                server.logError('[server-bind] serverID验证失败', bind);
                 ctx.json({
                     action: message.action,
                     msgId: message.msgId,

@@ -39,14 +39,8 @@ interface ServerSocketOnlineClient {
  * 服务端
  */
 export default class ServerSocket extends Emitter<ServerSocketEvent> {
-    // 链接对象
-    private server!: Server;
-
     // 状态
     public status: ServerSocketStatus = 'waiting';
-
-    // 配置
-    public options: ServerSocketOptions = { port: 31000, host: '0.0.0.0', serverId: 'Server' };
 
     // 客户端
     public onlineClients: Map<string, ServerSocketOnlineClient> = new Map();
@@ -56,6 +50,17 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
     // 记录注册的函数 response：是否回调给客户端
     public responseAction: Map<string, ServerSocketResponse> = new Map();
+
+    // 服务端id
+    public get serverId() {
+        return this.options.serverId;
+    }
+
+    // 链接对象
+    private server!: Server;
+
+    // 配置
+    private options: ServerSocketOptions = { port: 31000, host: '0.0.0.0', serverId: 'Server' };
 
     // 构造函数
     constructor(options: ServerSocketOptions) {
@@ -163,6 +168,17 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         this.log('[start]', '服务端启动');
         this.status = 'pending';
         this.server.listen(this.options.port);
+    }
+
+    /**
+     * 检查密钥
+     * @param secret
+     */
+    public checkSecret(secret: unknown): boolean {
+        if (this.options.secret) {
+            return this.options.secret === secret;
+        }
+        return true;
     }
 
     /**
