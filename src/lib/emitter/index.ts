@@ -30,7 +30,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
     public log(title: string, ...args: any[]) {
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
-        Number(process.env.DEBUG_LEVEL || 0) <= 1 && log(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
+        Number(process.env.DEBUG_LEVEL || 0) <= 1 && log(cyanColor(time), `[NS-${this.namespace}]`, blueColor(title), ...args);
         this.emit('logger', 'log', title, ...args);
     }
 
@@ -44,7 +44,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
     public debug(title: string, ...args: any[]) {
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
-        Number(process.env.DEBUG_LEVEL || 0) <= 0 && debug(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
+        Number(process.env.DEBUG_LEVEL || 0) <= 0 && debug(cyanColor(time), `[NS-${this.namespace}]`, blueColor(title), ...args);
         this.emit('logger', 'debug', title, ...args);
     }
 
@@ -58,7 +58,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
     public logError(title: string, ...args: any[]) {
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
-        Number(process.env.DEBUG_LEVEL || 0) <= 3 && error(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
+        Number(process.env.DEBUG_LEVEL || 0) <= 3 && error(cyanColor(time), `[NS-${this.namespace}]`, blueColor(title), ...args);
         this.emit('logger', 'error', title, ...args);
     }
 
@@ -72,7 +72,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
     public success(title: string, ...args: any[]) {
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
-        Number(process.env.DEBUG_LEVEL || 0) <= 2 && success(cyanColor(time), `[namespace-${this.namespace}]`, blueColor(title), ...args);
+        Number(process.env.DEBUG_LEVEL || 0) <= 2 && success(cyanColor(time), `[NS-${this.namespace}]`, blueColor(title), ...args);
         this.emit('logger', 'error', title, ...args);
     }
 

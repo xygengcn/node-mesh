@@ -1,7 +1,7 @@
 import type ServerSocket from '../lib/socket/server';
 import { ClientMiddleware, ClientSocketBindOptions } from '@/typings/socket';
 import { SocketBindStatus, SocketType } from '@/typings/enum';
-import { SocketMessage, SocketMessageType } from '@/typings/message';
+import { SocketMessage, SocketMessageType, SocketSysEvent, SocketSysMsgContent } from '@/typings/message';
 import Context from '@/lib/context';
 
 /**
@@ -15,7 +15,7 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
         if (ctx.body) {
             const message: SocketMessage = ctx.toJson();
             // 客户端来绑定
-            if (message && typeof message === 'object' && message?.action && message?.msgId && message.action === 'socket:bind' && message.type === 'request') {
+            if (message && typeof message === 'object' && message?.action && message?.msgId && message.action === SocketSysEvent.socketBind && message.type === 'request') {
                 const bind: ClientSocketBindOptions = message.content?.content || {};
 
                 // 绑定目标id
@@ -106,10 +106,10 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
             }
 
             // 客户端绑定结果
-            if (message && typeof message === 'object' && message?.action && message?.msgId && message.action === 'socket:online' && message.type === 'request') {
-                const { clientId } = message.content.content;
-                server.success('[client-online]', '客户端上线:', clientId);
-                server.emit('online', clientId);
+            if (message && typeof message === 'object' && message?.action && message?.msgId && message.action === SocketSysEvent.socketOnline && message.type === 'request') {
+                const content = message.content.content as SocketSysMsgContent;
+                server.success('[client-online]', '客户端上线:', content.clientId);
+                server.emit('sysMessage', content);
                 return;
             }
         }

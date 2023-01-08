@@ -1,7 +1,8 @@
 import Context from '@/lib/context';
-import { Socket } from 'net';
+import { Server, Socket } from 'net';
+import { ClientSocket } from '..';
 import { SocketBindStatus, SocketType } from './enum';
-import { SocketMessage } from './message';
+import { SocketMessage, SocketSysMsgContent } from './message';
 
 /**
  * 客户端状态 空，请求连接，绑定中，在线，重试，错误，下线
@@ -13,10 +14,21 @@ export type ClientSocketStatus = 'none' | 'pending' | 'binding' | 'online' | 'er
  */
 export interface NetSocketEvent {
     error: (e: Error) => void; // 错误
-    close: (socket: Socket) => void; // 关闭
+    close: (socket: Socket) => void; // 关闭 在end事件触发之后触发
     end: (socket: Socket) => void; // 结束 比close先执行
     connect: (socket: Socket) => void; // 请求成功
-    data: (buf: Buffer) => void; // socket传送数据
+    data: (buf: Buffer, client: ClientSocket) => void; // socket传送数据
+}
+
+/**
+ * 原生Server事件
+ */
+export interface NetServerEvent {
+    error: (e: Error) => void; // server error
+    close: (server: Server) => void; // server close
+    connect: (socket: Socket) => void; // 客户端连接
+    listening: (Server: Server) => void; // 服务端启动 等同于online
+    data: (buf: Buffer, client: ClientSocket) => void; // 收到客户端的消息
 }
 
 /**
@@ -27,9 +39,19 @@ export interface ClientSocketEvent extends NetSocketEvent {
     afterBind: (content: ClientSocketBindOptions, socket: Socket) => void; // 绑定回调
     send: (content: any) => void; // 回调发出消息
     message: (message: SocketMessage) => void; // 收到规范的消息了
-    online: (socket: Socket) => void; // 上线成功
+    online: (socket: Socket) => void; // 自己上线成功
+    offline: (socket: Socket) => void; // 自己下线成功
     reconnect: (socket: Socket) => void; // 开始重连
     disconnect: (socket: Socket) => void; // 开始重连
+}
+
+/**
+ * 服务端事件
+ */
+export interface ServerSocketEvent extends NetServerEvent {
+    online: (socket: Server) => void; // 自己上线成功
+    message: (message: SocketMessage, client: ClientSocket) => void; // // client send message
+    sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
 }
 
 /**
@@ -37,7 +59,7 @@ export interface ClientSocketEvent extends NetSocketEvent {
  */
 export interface ClientSocketOptions {
     clientId: string; // 自己id
-    targetId: string; // 目标id
+    targetId: string; // 目标id，在服务端，targetId为客户端id
     secret?: string; // 密钥 用来验证密钥
     port: number; // 端口 default：31000
     host: string; // 地址 default：0.0.0.0

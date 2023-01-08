@@ -42,6 +42,13 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     // 中间件
     private middlewares: Map<string, { middlewares: ClientMiddleware[]; plugin: (_this: Context) => Promise<void> }> = new Map();
 
+    /**
+     * 目标id
+     */
+    public get targetId() {
+        return this.options.targetId || '';
+    }
+
     // 构造
     constructor(options: ClientSocketOptions, socket?: Socket) {
         const namespace = `Socket-${options.type || SocketType.client}_${options.clientId}`;
@@ -114,9 +121,6 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
         // 开始链接
         this.socket.connect(this.options.port, this.options.host);
-
-        // 保持活跃
-        this.socket.setKeepAlive(true, 1000);
 
         // 链接事件
         this.socket.once('connect', () => {
@@ -258,14 +262,19 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      */
     public disconnect(error?: Error) {
         if (error) {
-            this.logError('[disconnect]', this.status, error);
+            this.logError('[disconnect]', this.clientId, this.status, error);
         } else {
-            this.debug('[disconnect]', this.status);
+            this.debug('[disconnect]', this.clientId, this.status);
         }
-        this.emit('disconnect', this.socket);
-        this.socket?.end();
+        // 结束连接
+        this.socket?.end(() => {
+            this.debug('[disconnect-end-callback]');
+            // 已经下线了就不会再触发
+            if (this.status !== 'offline') {
+                this.emit('disconnect', this.socket);
+            }
+        });
         this.socket?.destroy(error);
-        this.status = 'offline';
         this.isManualClose = true;
     }
 
@@ -446,6 +455,9 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     private listenSocketEvent() {
         this.debug('[listenSocketEvent]', '开始绑定事件');
 
+        // 保持活跃
+        this.socket.setKeepAlive(true, 500);
+
         // 接收来自服务端的信息
         const stream = new Stream();
         this.socket.pipe(stream);
@@ -454,7 +466,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             this.debug('[data]', '收到消息');
 
             // data hook
-            this.useHook('data', buf);
+            this.useHook('data', buf, this);
         });
 
         // 有错误发生调用的事件
@@ -471,9 +483,12 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         });
 
         // socket关闭的事件
-        this.socket.once('close', () => {
-            this.debug('[close]');
-            this.status = 'offline';
+        this.socket.once('close', (hadError) => {
+            this.debug('[close]', hadError);
+            // 下线
+            this.handleOffline();
+
+            // 回调
             this.emit('close', this.socket);
 
             this.socket.removeAllListeners();
@@ -497,9 +512,11 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
          */
         this.socket.once('end', () => {
             this.debug('[end]');
-            this.status = 'offline';
-            this.emit('end', this.socket);
+            // 先下线
+            this.handleOffline();
 
+            // 再通知
+            this.emit('end', this.socket);
             // 清理
             this.clearReuqestTimeoutMap();
 
@@ -533,6 +550,18 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                 // 开始重连，删掉重连定时
                 this.clearRetryTimeout();
             }, this.options.retryDelay || 3000);
+        }
+    }
+
+    /**
+     * 下线
+     */
+    private handleOffline() {
+        if (this.status !== 'offline') {
+            this.status = 'offline';
+            // 先日志，再回调
+            this.debug('[offline]');
+            this.emit('offline', this.socket);
         }
     }
 

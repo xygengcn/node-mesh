@@ -1,7 +1,7 @@
 import serverBindMiddleware from '@/middlewares/server-bind';
 import { SocketType } from '@/typings/enum';
-import { SocketMessage, SocketMessageType } from '@/typings/message';
-import { ClientMiddleware, ServerSocketOptions, SocketResponseAction } from '@/typings/socket';
+import { SocketMessage, SocketMessageType, SocketSysEvent } from '@/typings/message';
+import { ClientMiddleware, ServerSocketEvent, ServerSocketOptions, SocketResponseAction } from '@/typings/socket';
 import { uuid } from '@/utils';
 import net, { Server, Socket } from 'net';
 import Context from '../context';
@@ -13,19 +13,6 @@ import ClientSocket from './client';
  * 服务端状态
  */
 export type ServerSocketStatus = 'stop' | 'running' | 'waiting' | 'pending';
-
-/**
- * 服务端事件
- */
-export type ServerSocketEvent = {
-    error: (e: Error) => void; // server error
-    connect: (socket: Socket) => void; // client connect
-    close: (server: Server) => void; // server close
-    listening: (Server: Server) => void; // server running
-    data: (buf: Buffer, client: ClientSocket) => void; // client send data
-    message: (message: SocketMessage, client: ClientSocket) => void; // // client send message
-    online: (clientId: string) => void; // client online
-};
 
 /**
  * 服务端的动作注册
@@ -54,7 +41,7 @@ interface ServerSocketOnlineClient {
  */
 export default class ServerSocket extends Emitter<ServerSocketEvent> {
     // 链接对象
-    private socket!: Server;
+    private server!: Server;
 
     // 状态
     public status: ServerSocketStatus = 'waiting';
@@ -73,7 +60,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
     // 构造函数
     constructor(options: ServerSocketOptions) {
-        const namespace = `Server-${options.serverId}`;
+        const namespace = `Server_${options.serverId}`;
         super(namespace);
         this.options = Object.assign(this.options, options || {});
         this.status = 'waiting';
@@ -83,13 +70,22 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     /**
      * 停止
      */
-    public stop() {
-        this.log('[stop]');
-        this.socket.close();
+    public async stop() {
+        const count = await this.getConnections();
+        this.log('[stop]', '目前连接数', count);
+        this.server.close();
         this.status = 'stop';
         // 停止后把所有的客户端断开
-        this.onlineClients.forEach((c) => c.client.disconnect());
-        this.connectClients.forEach((c) => c.disconnect());
+        this.onlineClients.forEach((c) => {
+            c.client.disconnect();
+            c.client.off();
+            this.handleClientRemove(c.client.targetId);
+        });
+        this.connectClients.forEach((client) => {
+            client.disconnect();
+            client.off();
+            this.handleClientRemove(client.targetId);
+        });
     }
 
     /**
@@ -97,7 +93,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
      */
     public restart() {
         this.log('[restart]');
-        this.socket.ref();
+        this.server.ref();
         this.status = 'waiting';
         this.createServer();
         this.start();
@@ -165,9 +161,9 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
      * 启动
      */
     public start() {
-        this.log('[start]');
+        this.log('[start]', '服务端启动');
         this.status = 'pending';
-        this.socket.listen(this.options.port);
+        this.server.listen(this.options.port);
     }
 
     /**
@@ -176,33 +172,52 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     private createServer() {
         // 没有端口
         if (!this.options.port) {
-            this.emit('error', new TypeError('port为空'));
+            this.emit('error', new BaseError(30010, 'port为空'));
         }
 
         // 创建服务器
-        this.socket = net.createServer({ keepAlive: true }, this.handleClientConnect.bind(this));
+        this.server = net.createServer({ keepAlive: true }, this.handleClientConnect.bind(this));
 
         //设置监听时的回调函数
-        this.socket.on('listening', () => {
-            this.success('[listening]');
+        this.server.on('listening', () => {
+            this.success('[listening]', '服务端上线');
             this.status = 'running';
-            this.emit('listening', this.socket);
+            this.emit('listening', this.server);
+            this.emit('online', this.server);
         });
 
         //设置关闭时的回调函数
-        this.socket.on('close', () => {
+        this.server.on('close', () => {
             this.log('[close]');
-            this.socket.unref();
-            this.socket.removeAllListeners();
+            this.server.unref();
+            this.server.removeAllListeners();
             this.status = 'stop';
-            this.emit('close', this.socket);
+            this.emit('close', this.server);
         });
 
         //设置出错时的回调函数
-        this.socket.on('error', (e) => {
+        this.server.on('error', (e) => {
             this.logError('[error]', e);
             this.status = 'stop';
             this.emit('error', e);
+        });
+    }
+
+    /**
+     * 获取连接数
+     * @returns
+     */
+    private getConnections(): Promise<number> {
+        return new Promise((resolve) => {
+            this.server.getConnections((error, count) => {
+                if (error) {
+                    this.logError('[getConnections]', error);
+                    this.emit('error', error);
+                    return;
+                }
+                this.debug('[getConnections]', count);
+                resolve(count);
+            });
         });
     }
 
@@ -269,7 +284,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         // 临时id，绑定成功就会被移除
         const tempSocketId = `temp-${this.options.serverId}-${uuid()}`;
 
-        this.log('[connnect]', '监听到客户端', 'address: ', socket.address(), 'localAddress: ', socket.localAddress, '临时id: ', tempSocketId);
+        this.log('[client-connnect]', '监听到客户端', 'address: ', socket.address(), 'localAddress: ', socket.localAddress, '临时id: ', tempSocketId);
 
         this.emit('connect', socket);
 
@@ -301,11 +316,48 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
             this.emit('data', buf, client);
         });
 
+        // 收到end
+        client.on('end', () => {
+            this.debug('[client-end]', client.targetId);
+        });
+
+        client.on('close', () => {
+            this.debug('[client-close]', client.targetId);
+        });
+
+        // 离线通知
+        client.on('disconnect', () => {
+            this.debug('[client-disconnect]', client.targetId);
+            client.off();
+            this.handleClientRemove(client.targetId);
+        });
+
+        // 下线通知
+        client.on('offline', () => {
+            this.debug('[client-offline]', client.targetId);
+            // 自己发出客户端下线通知
+            this.emit('sysMessage', { clientId: client.targetId, serverId: this.options.serverId, event: SocketSysEvent.socketoffline });
+        });
+
         // 处理消息
         client.on('message', (msg) => {
-            this.log('[server-message]', '服务端收到数据: ', msg?.msgId, 'action:', msg?.action);
+            this.log('[client-message]', '服务端收到数据: ', msg?.msgId, 'action:', msg?.action);
             this.emit('message', msg, client);
         });
+    }
+
+    /**
+     * 移除客户端
+     *
+     * @todo 通知其他客户端
+     *
+     * @param clientId
+     */
+    private handleClientRemove(clientId: string) {
+        const socketId = `${this.options.serverId}-${clientId}`;
+        // 移除客户端
+        this.connectClients.delete(socketId);
+        this.onlineClients.delete(socketId);
     }
 
     /**

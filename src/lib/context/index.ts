@@ -51,7 +51,7 @@ export default class Context {
     /**
      * 发送消息
      */
-    public json(msg: Partial<SocketMessage>) {
+    public json<T = any>(msg: Partial<SocketMessage<T>>) {
         const message = this.toJson();
         return this.client.send({
             action: message?.action,

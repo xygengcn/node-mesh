@@ -1,6 +1,7 @@
 import Context from '@/lib/context';
 import BaseError from '@/lib/error';
 import { SocketBindStatus } from '@/typings/enum';
+import { SocketSysEvent, SocketSysMsgContent } from '@/typings/message';
 import { ClientMiddleware, ClientSocketBindOptions } from '@/typings/socket';
 import { AddressInfo } from 'net';
 
@@ -41,7 +42,7 @@ export function clientSocketBindMiddleware(): ClientMiddleware {
         if (ctx.client.status === 'binding') {
             // 发送绑定事件到客户端
             ctx.client.emit('beforeBind', content, ctx.socket);
-            ctx.client.request('socket:bind', content, (error, result: ClientSocketBindOptions) => {
+            ctx.client.request(SocketSysEvent.socketBind, content, (error, result: ClientSocketBindOptions) => {
                 // 收到回调
                 ctx.client.emit('afterBind', result, ctx.socket);
 
@@ -61,11 +62,13 @@ export function clientSocketBindMiddleware(): ClientMiddleware {
 
                 // 通知服务端上线了
                 ctx.log('[online]', '通知服务端，客户端绑定成功');
-                ctx.json({
-                    action: 'socket:online',
+                ctx.json<SocketSysMsgContent>({
+                    action: SocketSysEvent.socketOnline,
                     content: {
                         content: {
-                            clientId: ctx.id
+                            clientId: ctx.id,
+                            serverId: ctx.client.options.targetId,
+                            event: SocketSysEvent.socketOnline
                         }
                     }
                 });
