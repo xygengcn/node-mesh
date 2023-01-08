@@ -1,8 +1,25 @@
 import Context from '@/lib/context';
 import { Server, Socket } from 'net';
 import { ClientSocket } from '..';
-import { SocketBindStatus, SocketType } from './enum';
 import { SocketMessage, SocketSysMsgContent } from './message';
+
+/**
+ * 客户端和服务端的绑定状态
+ */
+export enum SocketBindStatus {
+    waiting = 0,
+    error = 2, // 服务器id失败
+    authError = 3, // 验证secret失败
+    success = 1
+}
+
+/**
+ * 通信者身份
+ */
+export enum SocketType {
+    client = 'client',
+    server = 'server'
+}
 
 /**
  * 客户端状态 空，请求连接，绑定中，在线，重试，错误，下线

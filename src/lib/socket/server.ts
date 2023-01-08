@@ -1,7 +1,6 @@
 import serverBindMiddleware from '@/middlewares/server-bind';
-import { SocketType } from '@/typings/enum';
 import { SocketMessage, SocketMessageType, SocketSysEvent } from '@/typings/message';
-import { ClientMiddleware, ServerSocketEvent, ServerSocketOptions, SocketResponseAction } from '@/typings/socket';
+import { ClientMiddleware, ServerSocketEvent, ServerSocketOptions, SocketResponseAction, SocketType } from '@/typings/socket';
 import { uuid } from '@/utils';
 import net, { Server, Socket } from 'net';
 import Context from '../context';

@@ -1,4 +1,4 @@
-import { SocketType } from './enum';
+import { SocketType } from './socket';
 
 /**
  * 消息类型

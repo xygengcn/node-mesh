@@ -1,8 +1,7 @@
 import { clientSocketBindMiddleware } from '@/middlewares/client-bind';
 import { clientSocketMessageMiddleware } from '@/middlewares/client-message';
-import { SocketType } from '@/typings/enum';
 import { SocketMessage, SocketMessageType } from '@/typings/message';
-import { ClientMiddleware, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketResponseAction } from '@/typings/socket';
+import { ClientMiddleware, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketResponseAction, SocketType } from '@/typings/socket';
 import { compose, parseError, stringifyError, uuid } from '@/utils';
 import { Stream } from 'amp';
 import Message from 'amp-message';

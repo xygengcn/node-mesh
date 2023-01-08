@@ -1,8 +1,7 @@
 import Context from '@/lib/context';
 import BaseError from '@/lib/error';
-import { SocketBindStatus } from '@/typings/enum';
 import { SocketSysEvent, SocketSysMsgContent } from '@/typings/message';
-import { ClientMiddleware, ClientSocketBindOptions } from '@/typings/socket';
+import { ClientMiddleware, ClientSocketBindOptions, SocketBindStatus } from '@/typings/socket';
 import { AddressInfo } from 'net';
 
 /**

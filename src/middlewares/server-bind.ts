@@ -1,6 +1,5 @@
 import type ServerSocket from '../lib/socket/server';
-import { ClientMiddleware, ClientSocketBindOptions } from '@/typings/socket';
-import { SocketBindStatus, SocketType } from '@/typings/enum';
+import { ClientMiddleware, ClientSocketBindOptions, SocketBindStatus, SocketType } from '@/typings/socket';
 import { SocketMessage, SocketMessageType, SocketSysEvent, SocketSysMsgContent } from '@/typings/message';
 import Context from '@/lib/context';
 
