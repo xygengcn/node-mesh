@@ -66,6 +66,7 @@ export function clientSocketBindMiddleware(): ClientMiddleware {
                     action: SocketSysEvent.socketOnline,
                     content: {
                         content: {
+                            content: null,
                             clientId: ctx.id,
                             serverId: ctx.client.options.targetId,
                             event: SocketSysEvent.socketOnline

@@ -46,8 +46,9 @@ export enum SocketSysEvent {
 /**
  * 客户端端上线和离线提醒内容
  */
-export interface SocketSysMsgContent {
+export interface SocketSysMsgContent<T = any> {
     clientId: string;
     serverId: string;
+    content: T;
     event: SocketSysEvent;
 }

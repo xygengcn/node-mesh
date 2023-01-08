@@ -336,7 +336,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         client.on('offline', () => {
             this.debug('[client-offline]', client.targetId);
             // 自己发出客户端下线通知
-            this.emit('sysMessage', { clientId: client.targetId, serverId: this.options.serverId, event: SocketSysEvent.socketoffline });
+            this.emit('sysMessage', { clientId: client.targetId, serverId: this.options.serverId, event: SocketSysEvent.socketoffline, content: null });
         });
 
         // 处理消息
