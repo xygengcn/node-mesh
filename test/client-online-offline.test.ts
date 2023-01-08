@@ -1,11 +1,11 @@
 import assert from 'assert';
 import { ClientSocket, ServerSocket } from '../src/index';
 
-const server = new ServerSocket({ port: 3005, host: '0.0.0.0', serverId: 'server1' });
+const server = new ServerSocket({ port: 3005, serverId: 'server1' });
 
 server.start();
 
-describe('客户端上线离线，服务端收到通知', () => {
+describe('客户端上线离线，其他端收到通知', () => {
     before(() => {
         server.on('error', (error) => {
             assert.fail(error);
@@ -15,7 +15,7 @@ describe('客户端上线离线，服务端收到通知', () => {
         server.stop();
     });
 
-    describe('客户端上线，并离线', () => {
+    describe('客户端上线，并离线，服务端收到通知', () => {
         const client = new ClientSocket({ port: 3005, host: '0.0.0.0', clientId: 'client1', targetId: 'server1' });
         it('服务端收到上线通知', (done) => {
             server.once('sysMessage', (content) => {

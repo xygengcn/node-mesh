@@ -1,7 +1,7 @@
 import assert from 'assert';
 import { ClientSocket, ServerSocket } from '../src/index';
 
-const server = new ServerSocket({ port: 3002, host: '0.0.0.0', serverId: 'server1' });
+const server = new ServerSocket({ port: 3002, serverId: 'server1' });
 const client = new ClientSocket({ port: 3002, host: '0.0.0.0', clientId: 'test-pref', targetId: 'server1' });
 
 server.start();
