@@ -1,5 +1,6 @@
 import serverBindMiddleware from '@/middlewares/server-bind';
-import { SocketMessage, SocketMessageType, SocketSysEvent } from '@/typings/message';
+import serverSysMsgMiddleware from '@/middlewares/server-sys';
+import { SocketMessage, SocketMessageType, SocketSysEvent, SocketSysMsgContent } from '@/typings/message';
 import { ClientMiddleware, ServerSocketEvent, ServerSocketOptions, SocketResponseAction, SocketType } from '@/typings/socket';
 import { uuid } from '@/utils';
 import net, { Server, Socket } from 'net';
@@ -31,7 +32,7 @@ type ServerSocketResponse =
  * 服务端上线的客户端
  */
 interface ServerSocketOnlineClient {
-    client: ClientSocket;
+    socket: ClientSocket;
     responseActions: Set<string>;
 }
 
@@ -81,9 +82,9 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         this.status = 'stop';
         // 停止后把所有的客户端断开
         this.onlineClients.forEach((c) => {
-            c.client.disconnect();
-            c.client.off();
-            this.handleClientRemove(c.client.targetId);
+            c.socket.disconnect();
+            c.socket.off();
+            this.handleClientRemove(c.socket.targetId);
         });
         this.connectClients.forEach((client) => {
             client.disconnect();
@@ -182,6 +183,26 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     }
 
     /**
+     * 服务端广播
+     *
+     * @todo 待测试
+     *
+     * @param action
+     * @param content
+     */
+    public broadcast<T = any>(message: Partial<SocketMessage<T>>, filters?: (client: ServerSocketOnlineClient) => boolean) {
+        this.debug('[broadcast]', '客户端:', this.onlineClients.size, '消息', message);
+        this.onlineClients.forEach((client) => {
+            // 客户端在线
+            if (client.socket.status === 'online') {
+                if ((filters && typeof filters === 'function' && filters(client)) || filters === undefined) {
+                    client.socket.send(message);
+                }
+            }
+        });
+    }
+
+    /**
      * 建立服务器
      */
     private createServer() {
@@ -267,15 +288,15 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
                 const socket = this.onlineClients.get(responseAction.socketId);
 
                 // 客户端不在线
-                if (socket?.client.status !== 'online') {
+                if (socket?.socket.status !== 'online') {
                     callback(new BaseError(30007, 'Action is not active'), null);
                     return;
                 }
 
                 // 客户端有这个动作
-                if (socket && socket.responseActions.has(action) && socket.client.status === 'online') {
+                if (socket && socket.responseActions.has(action) && socket.socket.status === 'online') {
                     // 请求客户端
-                    socket.client
+                    socket.socket
                         .request(action, params)
                         .then((result) => {
                             callback(null, result);
@@ -326,6 +347,9 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         // 处理请求事件
         client.use('data', this.handleClientRequestEvent());
 
+        // 处理系统消息
+        client.use('data', serverSysMsgMiddleware(this));
+
         // 消息通知
         client.on('data', (buf) => {
             this.emit('data', buf, client);
@@ -351,7 +375,19 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         client.on('offline', () => {
             this.debug('[client-offline]', client.targetId);
             // 自己发出客户端下线通知
-            this.emit('sysMessage', { clientId: client.targetId, serverId: this.options.serverId, event: SocketSysEvent.socketoffline, content: null });
+            const content: SocketSysMsgContent = { clientId: client.targetId, serverId: this.options.serverId, event: SocketSysEvent.socketoffline, content: null };
+
+            // 回调
+            this.emit('sysMessage', content);
+
+            // 广播到其他客户端
+            this.broadcast({
+                action: SocketSysEvent.socketoffline,
+                type: SocketMessageType.notification,
+                content: {
+                    content
+                }
+            });
         });
 
         // 处理消息

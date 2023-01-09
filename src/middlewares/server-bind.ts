@@ -1,6 +1,6 @@
 import type ServerSocket from '../lib/socket/server';
 import { ClientMiddleware, ClientSocketBindOptions, SocketBindStatus, SocketType } from '@/typings/socket';
-import { SocketMessage, SocketMessageType, SocketSysEvent, SocketSysMsgContent } from '@/typings/message';
+import { SocketMessage, SocketMessageType, SocketSysEvent } from '@/typings/message';
 import Context from '@/lib/context';
 
 /**
@@ -31,7 +31,7 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
                     if (server.checkSecret(bind.secret)) {
                         // 绑定成功
                         const responseActions = new Set(bind.responseActions || []);
-                        server.onlineClients.set(socketId, { client: ctx.client, responseActions });
+                        server.onlineClients.set(socketId, { socket: ctx.client, responseActions });
 
                         // 开始注册动作
                         responseActions.forEach((actionKey) => {
@@ -101,14 +101,6 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
                         }
                     }
                 });
-                return;
-            }
-
-            // 客户端绑定结果
-            if (message && typeof message === 'object' && message?.action && message?.msgId && message.action === SocketSysEvent.socketOnline && message.type === 'request') {
-                const content = message.content.content as SocketSysMsgContent;
-                server.success('[client-online]', '客户端上线:', content.clientId);
-                server.emit('sysMessage', content);
                 return;
             }
         }

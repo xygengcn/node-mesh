@@ -11,14 +11,15 @@ import { ClientMiddleware } from '@/typings/socket';
  *
  * @returns
  */
-export function clientSocketMessageMiddleware(): ClientMiddleware {
+export function clientMessageMiddleware(): ClientMiddleware {
     return async (ctx: Context, next) => {
         const message: SocketMessage = ctx.toJson();
         if (message && typeof message === 'object') {
             if (message.action && message.targetId === ctx.id && message.msgId) {
                 // log
                 ctx.debug('[message]', message);
-                // 在线状态再触发，是固定消息模式
+
+                // 在线状态再触发，普通消息通知
                 if (ctx.client.status === 'online') {
                     ctx.client.emit('message', message);
                 }

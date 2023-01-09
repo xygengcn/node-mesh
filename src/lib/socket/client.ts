@@ -1,5 +1,6 @@
 import { clientSocketBindMiddleware } from '@/middlewares/client-bind';
-import { clientSocketMessageMiddleware } from '@/middlewares/client-message';
+import { clientMessageMiddleware } from '@/middlewares/client-message';
+import clientSysMsgMiddleware from '@/middlewares/client-sys';
 import { SocketMessage, SocketMessageType } from '@/typings/message';
 import { ClientMiddleware, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketResponseAction, SocketType } from '@/typings/socket';
 import { compose, parseError, stringifyError, uuid } from '@/utils';
@@ -82,11 +83,17 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         this.use('connect', clientSocketBindMiddleware(this.options.secret));
 
         // 处理消息
-        this.use('data', clientSocketMessageMiddleware());
+        this.use('data', clientMessageMiddleware());
+
+        // 处理系统消息
+        this.use('data', clientSysMsgMiddleware(this));
     }
 
     /**
      * 插件
+     *
+     * 后注册先执行
+     *
      * @param hook string
      * @param middleware ClientMiddleware
      */
@@ -273,9 +280,9 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      */
     public disconnect(error?: Error) {
         if (error) {
-            this.logError('[disconnect]', '客户端断开', this.status, error);
+            this.logError('[disconnect]', '客户端断开，当前状态：', this.status, '错误', error);
         } else {
-            this.debug('[disconnect]', '客户端断开', this.status);
+            this.debug('[disconnect]', '客户端断开，当前状态：', this.status);
         }
         // 结束连接
         this.socket?.end(() => {
@@ -371,11 +378,8 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             // 生成唯一id
             const msgId = this.msgId();
 
-            // 消息类型
-            const msgType: SocketMessage['type'] = typeof callback === 'boolean' && callback === false ? SocketMessageType.publish : SocketMessageType.request;
-
             // log
-            this.log('[requestMessage]', 'action:', action, '消息类型:', msgType, '发出消息:', msgId);
+            this.log('[requestMessage]', 'action:', action, '发出消息:', msgId);
 
             // 存在回调
             if (callback && typeof callback === 'function') {
@@ -495,7 +499,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
         // socket关闭的事件
         this.socket.once('close', (hadError) => {
-            this.debug('[close]', hadError);
+            this.debug('[close]', 'hadError:', hadError);
             // 下线
             this.handleOffline();
 

@@ -1,6 +1,6 @@
 import Context from '@/lib/context';
 import BaseError from '@/lib/error';
-import { SocketSysEvent, SocketSysMsgContent } from '@/typings/message';
+import { SocketMessageType, SocketSysEvent, SocketSysMsgContent } from '@/typings/message';
 import { ClientMiddleware, ClientSocketBindOptions, SocketBindStatus } from '@/typings/socket';
 import { AddressInfo } from 'net';
 
@@ -65,6 +65,7 @@ export function clientSocketBindMiddleware(secret: string | undefined): ClientMi
                 ctx.log('[online]', '通知服务端，客户端绑定成功');
                 ctx.json<SocketSysMsgContent>({
                     action: SocketSysEvent.socketOnline,
+                    type: SocketMessageType.notification,
                     content: {
                         content: {
                             content: null,

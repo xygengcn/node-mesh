@@ -22,6 +22,11 @@ export default class Context {
     public body: Buffer | unknown;
 
     /**
+     * 消息
+     */
+    public message: SocketMessage;
+
+    /**
      * 日志
      */
     public log: Emitter['log'];
@@ -34,6 +39,7 @@ export default class Context {
         this.client = client;
         this.body = data;
         this.socket = client.socket;
+        this.message = this.toJson();
         this.log = client.log.bind(client);
         this.debug = client.debug.bind(client);
         this.logError = client.logError.bind(client);
@@ -44,8 +50,11 @@ export default class Context {
      * 转换数据
      * @returns
      */
-    public toJson(): SocketMessage {
-        return parseMessage(this.body) as SocketMessage;
+    public toJson(body?: Buffer): SocketMessage {
+        if (this.message && !body) {
+            return this.message;
+        }
+        return parseMessage(body || this.body) as SocketMessage;
     }
 
     /**

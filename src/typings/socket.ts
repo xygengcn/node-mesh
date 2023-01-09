@@ -56,6 +56,7 @@ export interface ClientSocketEvent extends NetSocketEvent {
     afterBind: (content: ClientSocketBindOptions, socket: Socket) => void; // 绑定回调
     send: (content: any) => void; // 回调发出消息
     message: (message: SocketMessage) => void; // 收到规范的消息了
+    sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
     online: (socket: Socket) => void; // 自己上线成功
     offline: (socket: Socket) => void; // 自己下线成功
     reconnect: (socket: Socket) => void; // 开始重连

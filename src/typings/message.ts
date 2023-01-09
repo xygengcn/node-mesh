@@ -6,7 +6,8 @@ import { SocketType } from './socket';
 export enum SocketMessageType {
     request = 'request',
     publish = 'publish',
-    response = 'response'
+    response = 'response',
+    notification = 'notification'
 }
 
 /**
