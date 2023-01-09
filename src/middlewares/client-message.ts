@@ -1,5 +1,5 @@
 import Context from '@/lib/context';
-import { SocketMessage, SocketMessageType } from '@/typings/message';
+import { SocketMessage } from '@/typings/message';
 import { ClientMiddleware } from '@/typings/socket';
 
 /**
@@ -57,15 +57,7 @@ export function clientMessageMiddleware(): ClientMiddleware {
                         }
                     }
 
-                    ctx.json({
-                        action: message.action,
-                        msgId: message.msgId,
-                        type: SocketMessageType.response,
-                        content: {
-                            content,
-                            developerMsg
-                        }
-                    });
+                    ctx.json<any>(content, developerMsg);
                     return;
                 }
             }

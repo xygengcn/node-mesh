@@ -45,11 +45,14 @@ export enum SocketSysEvent {
 }
 
 /**
+ * 系统消息类型
+ */
+export interface SocketSysMsgContent<T = any, K extends SocketSysEvent = SocketSysEvent> {
+    content: T;
+    event: K;
+}
+
+/**
  * 客户端端上线和离线提醒内容
  */
-export interface SocketSysMsgContent<T = any> {
-    clientId: string;
-    serverId: string;
-    content: T;
-    event: SocketSysEvent;
-}
+export type SocketSysMsgOnlineOrOfflineContent = SocketSysMsgContent<{ clientId: string; serverId: string }, SocketSysEvent.socketOnline | SocketSysEvent.socketoffline>;

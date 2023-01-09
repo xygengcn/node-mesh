@@ -1,4 +1,4 @@
-import { SocketMessage } from '@/typings/message';
+import { SocketMessage, SocketMessageType } from '@/typings/message';
 import { parseMessage } from '@/utils';
 import { Socket } from 'net';
 import Emitter from '../emitter';
@@ -58,13 +58,30 @@ export default class Context {
     }
 
     /**
-     * 发送消息
+     * 发送正常消息
      */
-    public json<T = any>(msg: Partial<SocketMessage<T>>) {
+    public send<T = any>(msg: Partial<SocketMessage<T>>) {
         const message = this.toJson();
         return this.client.send({
             action: message?.action,
             ...msg
+        });
+    }
+
+    /**
+     * 回复消息
+     * @param content
+     */
+    public json<T = any>(content: T, error?: Error | null) {
+        const message = this.toJson();
+        return this.client.send({
+            action: message?.action,
+            msgId: message.msgId,
+            type: SocketMessageType.response,
+            content: {
+                content,
+                developerMsg: error || null
+            }
         });
     }
 }

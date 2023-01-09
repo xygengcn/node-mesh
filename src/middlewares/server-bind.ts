@@ -1,6 +1,6 @@
 import type ServerSocket from '../lib/socket/server';
-import { ClientMiddleware, ClientSocketBindOptions, SocketBindStatus, SocketType } from '@/typings/socket';
-import { SocketMessage, SocketMessageType, SocketSysEvent } from '@/typings/message';
+import { ClientMiddleware, ClientSocketBindOptions, ServerSocketBindResult, SocketBindStatus, SocketType } from '@/typings/socket';
+import { SocketMessage, SocketSysEvent, SocketSysMsgContent } from '@/typings/message';
 import Context from '@/lib/context';
 
 /**
@@ -15,7 +15,10 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
             const message: SocketMessage = ctx.toJson();
             // 客户端来绑定
             if (message && typeof message === 'object' && message?.action && message?.msgId && message.action === SocketSysEvent.socketBind && message.type === 'request') {
-                const bind: ClientSocketBindOptions = message.content?.content || {};
+                const sysMessageContent: SocketSysMsgContent<ClientSocketBindOptions> = message.content?.content || {};
+
+                // 绑定数据
+                const bind: ClientSocketBindOptions = sysMessageContent.content;
 
                 // 绑定目标id
                 ctx.client.configure({ targetId: bind.clientId });
@@ -58,15 +61,10 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
                         server.connectClients.delete(tempSocketId);
 
                         // 回传消息
-                        ctx.json({
-                            action: message.action,
-                            msgId: message.msgId,
-                            type: SocketMessageType.response,
+                        ctx.json<SocketSysMsgContent<ServerSocketBindResult>>({
+                            event: SocketSysEvent.socketBind,
                             content: {
-                                content: {
-                                    status: SocketBindStatus.success,
-                                    socketId
-                                }
+                                status: SocketBindStatus.success
                             }
                         });
                         return;
@@ -74,15 +72,10 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
 
                     // 检验失败
                     server.logError('[server-bind]', 'auth验证失败', bind);
-                    ctx.json({
-                        action: message.action,
-                        msgId: message.msgId,
-                        type: SocketMessageType.response,
+                    ctx.json<SocketSysMsgContent<ServerSocketBindResult>>({
+                        event: SocketSysEvent.socketBind,
                         content: {
-                            content: {
-                                status: SocketBindStatus.authError,
-                                socketId
-                            }
+                            status: SocketBindStatus.authError
                         }
                     });
                     return;
@@ -90,15 +83,10 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
 
                 // 返回失败信息
                 server.logError('[server-bind] serverID验证失败', bind);
-                ctx.json({
-                    action: message.action,
-                    msgId: message.msgId,
-                    type: SocketMessageType.response,
+                ctx.json<SocketSysMsgContent<ServerSocketBindResult>>({
+                    event: SocketSysEvent.socketBind,
                     content: {
-                        content: {
-                            status: SocketBindStatus.error,
-                            socketId
-                        }
+                        status: SocketBindStatus.error
                     }
                 });
                 return;

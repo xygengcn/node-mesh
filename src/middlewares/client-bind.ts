@@ -1,7 +1,7 @@
 import Context from '@/lib/context';
 import BaseError from '@/lib/error';
-import { SocketMessageType, SocketSysEvent, SocketSysMsgContent } from '@/typings/message';
-import { ClientMiddleware, ClientSocketBindOptions, SocketBindStatus } from '@/typings/socket';
+import { SocketMessageType, SocketSysEvent, SocketSysMsgContent, SocketSysMsgOnlineOrOfflineContent } from '@/typings/message';
+import { ClientMiddleware, ClientSocketBindOptions, ServerSocketBindResult, SocketBindStatus } from '@/typings/socket';
 import { AddressInfo } from 'net';
 
 /**
@@ -23,17 +23,20 @@ export function clientSocketBindMiddleware(secret: string | undefined): ClientMi
         const addressInfo = ctx.socket.address() as AddressInfo;
 
         // 绑定数据
-        const content: ClientSocketBindOptions = {
-            status: SocketBindStatus.waiting,
-            port: addressInfo.port,
-            host: addressInfo.address,
-            clientId: ctx.id,
-            serverId: ctx.client.targetId,
-            secret: secret,
-            responseActions: ctx.client.responseKeys()
+        const sysMsgContent: SocketSysMsgContent<ClientSocketBindOptions> = {
+            content: {
+                clientId: ctx.id,
+                serverId: ctx.client.targetId,
+                status: SocketBindStatus.waiting,
+                port: addressInfo.port,
+                host: addressInfo.address,
+                secret: secret,
+                responseActions: ctx.client.responseKeys()
+            },
+            event: SocketSysEvent.socketBind
         };
 
-        ctx.debug('[bindServer]', '开始绑定验证服务端', content);
+        ctx.debug('[bindServer]', '开始绑定验证服务端', sysMsgContent);
 
         // 防止客户端绑定
         if (ctx.client.isServer) {
@@ -42,16 +45,15 @@ export function clientSocketBindMiddleware(secret: string | undefined): ClientMi
         // 等待绑定
         if (ctx.client.status === 'binding') {
             // 发送绑定事件到客户端
-            ctx.client.emit('beforeBind', content, ctx.socket);
-            ctx.client.request(SocketSysEvent.socketBind, content, (error, result: ClientSocketBindOptions) => {
-                // 收到回调
-                ctx.client.emit('afterBind', result, ctx.socket);
-
+            ctx.client.emit('beforeBind', sysMsgContent.content, ctx.socket);
+            ctx.client.request(SocketSysEvent.socketBind, sysMsgContent, (error, result: SocketSysMsgContent<ServerSocketBindResult>) => {
                 // 日志.
                 ctx.debug('[afterBind]', result, error);
+                // 收到回调
+                ctx.client.emit('afterBind', result.content, ctx.socket);
 
-                // 绑定失败
-                if (error || result.status !== SocketBindStatus.success) {
+                // 存在的错误，绑定失败
+                if (error || result.content.status !== SocketBindStatus.success) {
                     ctx.logError('[bind:error] ', ctx.client.status, result, error);
                     ctx.client.disconnect(error || new BaseError(30009, error || 'Client bind error'));
                     return;
@@ -63,15 +65,15 @@ export function clientSocketBindMiddleware(secret: string | undefined): ClientMi
 
                 // 通知服务端上线了
                 ctx.log('[online]', '通知服务端，客户端绑定成功');
-                ctx.json<SocketSysMsgContent>({
+
+                // 发送消息
+                ctx.send<SocketSysMsgOnlineOrOfflineContent>({
                     action: SocketSysEvent.socketOnline,
                     type: SocketMessageType.notification,
                     content: {
                         content: {
-                            content: null,
-                            clientId: ctx.id,
-                            serverId: ctx.client.targetId,
-                            event: SocketSysEvent.socketOnline
+                            event: SocketSysEvent.socketOnline,
+                            content: { clientId: ctx.id, serverId: ctx.client.targetId }
                         }
                     }
                 });

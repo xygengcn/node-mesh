@@ -1,6 +1,6 @@
 import serverBindMiddleware from '@/middlewares/server-bind';
 import serverSysMsgMiddleware from '@/middlewares/server-sys';
-import { SocketMessage, SocketMessageType, SocketSysEvent, SocketSysMsgContent } from '@/typings/message';
+import { SocketMessage, SocketMessageType, SocketSysMsgOnlineOrOfflineContent, SocketSysEvent } from '@/typings/message';
 import { ClientMiddleware, ServerSocketEvent, ServerSocketOptions, SocketResponseAction, SocketType } from '@/typings/socket';
 import { uuid } from '@/utils';
 import net, { Server, Socket } from 'net';
@@ -375,7 +375,10 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         client.on('offline', () => {
             this.debug('[client-offline]', client.targetId);
             // 自己发出客户端下线通知
-            const content: SocketSysMsgContent = { clientId: client.targetId, serverId: this.options.serverId, event: SocketSysEvent.socketoffline, content: null };
+            const content: SocketSysMsgOnlineOrOfflineContent = {
+                event: SocketSysEvent.socketoffline,
+                content: { clientId: client.targetId, serverId: this.options.serverId }
+            };
 
             // 回调
             this.emit('sysMessage', content);
@@ -422,15 +425,8 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
                 if (this.responseAction.has(message.action)) {
                     // 注册方法
                     this.handleServerAction(message.action, message.content?.content || '', (developerMsg, content) => {
-                        ctx.json({
-                            action: message.action,
-                            msgId: message.msgId,
-                            type: SocketMessageType.response,
-                            content: {
-                                content,
-                                developerMsg
-                            }
-                        });
+                        // 返回请求结果
+                        ctx.json<any>(content, developerMsg);
                     });
                     return;
                 }

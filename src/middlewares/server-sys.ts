@@ -1,5 +1,5 @@
 import Context from '@/lib/context';
-import { SocketMessage, SocketMessageType, SocketSysEvent, SocketSysMsgContent } from '@/typings/message';
+import { SocketMessage, SocketMessageType, SocketSysEvent, SocketSysMsgContent, SocketSysMsgOnlineOrOfflineContent } from '@/typings/message';
 import { ClientMiddleware } from '@/typings/socket';
 import type ServerSocket from '../lib/socket/server';
 
@@ -23,11 +23,11 @@ export default function serverSysMsgMiddleware(server: ServerSocket): ClientMidd
                 /^socket:.+$/i.test(message?.action) &&
                 message.type === SocketMessageType.notification
             ) {
-                const content = message.content.content as SocketSysMsgContent;
+                const sysMsgContent = message.content.content as SocketSysMsgContent;
                 switch (message.action) {
                     case SocketSysEvent.socketOnline: {
                         // 客户端上线
-                        server.success('[client-online]', '客户端上线:', content.clientId);
+                        server.success('[client-online]', '客户端上线:', (sysMsgContent as SocketSysMsgOnlineOrOfflineContent).content.clientId);
 
                         // 通知其他客户端上线
                         server.broadcast<SocketSysMsgContent>(
@@ -35,18 +35,18 @@ export default function serverSysMsgMiddleware(server: ServerSocket): ClientMidd
                                 action: SocketSysEvent.socketOnline,
                                 type: SocketMessageType.notification,
                                 content: {
-                                    content
+                                    content: sysMsgContent
                                 }
                             },
                             (client) => {
                                 // 过滤掉自己的
-                                return client.socket.targetId !== content.clientId;
+                                return client.socket.targetId !== (sysMsgContent as SocketSysMsgOnlineOrOfflineContent).content.clientId;
                             }
                         );
                         break;
                     }
                 }
-                server.emit('sysMessage', content);
+                server.emit('sysMessage', sysMsgContent);
 
                 return;
             }

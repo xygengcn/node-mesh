@@ -53,7 +53,7 @@ export interface NetServerEvent {
  */
 export interface ClientSocketEvent extends NetSocketEvent {
     beforeBind: (content: ClientSocketBindOptions, socket: Socket) => void; // 开始绑定，还没发送bind:callback
-    afterBind: (content: ClientSocketBindOptions, socket: Socket) => void; // 绑定回调
+    afterBind: (content: ServerSocketBindResult, socket: Socket) => void; // 绑定回调
     send: (content: any) => void; // 回调发出消息
     message: (message: SocketMessage) => void; // 收到规范的消息了
     sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
@@ -91,8 +91,8 @@ export interface ClientSocketOptions {
  * 绑定配置
  */
 export interface ClientSocketBindOptions {
-    serverId: string; // 目标服务端id
-    clientId: string; // 客户端id
+    clientId: string; // 自己id
+    serverId: string; // 目标id
     secret?: string; // 密钥 用来验证密钥
     host: string; // 目标地址
     port: number; // 目标端口
@@ -104,7 +104,6 @@ export interface ClientSocketBindOptions {
  * 返回绑定结果
  */
 export interface ServerSocketBindResult {
-    socketId: string;
     status: SocketBindStatus; // 绑定状态
 }
 

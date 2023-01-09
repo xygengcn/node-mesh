@@ -18,10 +18,10 @@ describe('客户端上线离线，其他端收到通知', () => {
     describe('客户端上线，并离线，服务端收到通知', () => {
         const client1 = new ClientSocket({ port: 3005, host: '0.0.0.0', clientId: 'client1', targetId: 'server1' });
         it('服务端收到上线通知', (done) => {
-            server.once('sysMessage', (content) => {
-                if (content.event === 'socket:online') {
-                    assert.equal(content.clientId, 'client1');
-                    assert.equal(content.serverId, 'server1');
+            server.once('sysMessage', (sysMsgContent) => {
+                if (sysMsgContent.event === 'socket:online') {
+                    assert.equal(sysMsgContent.content.clientId, 'client1');
+                    assert.equal(sysMsgContent.content.serverId, 'server1');
                     done();
                 }
             });
@@ -29,10 +29,10 @@ describe('客户端上线离线，其他端收到通知', () => {
         });
 
         it('服务端收到下线通知', (done) => {
-            server.once('sysMessage', (content) => {
-                if (content.event === 'socket:offline') {
-                    assert.equal(content.clientId, 'client1');
-                    assert.equal(content.serverId, 'server1');
+            server.once('sysMessage', (sysMsgContent) => {
+                if (sysMsgContent.event === 'socket:offline') {
+                    assert.equal(sysMsgContent.content.clientId, 'client1');
+                    assert.equal(sysMsgContent.content.serverId, 'server1');
                     server.off('sysMessage');
                     done();
                 }
@@ -48,8 +48,8 @@ describe('客户端上线离线，其他端收到通知', () => {
         it('客户端3收到上线通知', (done) => {
             client3.connect();
             client3.once('online', () => {
-                client3.once('sysMessage', (content) => {
-                    if (content.event === 'socket:online' && content.clientId === 'client2') {
+                client3.once('sysMessage', (sysMsgContent) => {
+                    if (sysMsgContent.event === 'socket:online' && sysMsgContent.content.clientId === 'client2') {
                         done();
                     } else {
                         done(new Error('通知失败'));
@@ -60,8 +60,8 @@ describe('客户端上线离线，其他端收到通知', () => {
         });
 
         it('客户端3收到下线通知', (done) => {
-            client3.once('sysMessage', (content) => {
-                if (content.event === 'socket:offline' && content.clientId === 'client2') {
+            client3.once('sysMessage', (sysMsgContent) => {
+                if (sysMsgContent.event === 'socket:offline' && sysMsgContent.content.clientId === 'client2') {
                     done();
                     client3.disconnect();
                 } else {
