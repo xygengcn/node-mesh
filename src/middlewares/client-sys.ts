@@ -13,17 +13,14 @@ export default function clientSysMsgMiddleware(client: ClientSocket): ClientMidd
         if (ctx.body) {
             const message: SocketMessage = ctx.toJson();
             // 系统通知
-            if (
-                message &&
-                typeof message === 'object' &&
-                message?.action &&
-                message?.msgId &&
-                /^socket:.+$/i.test(message?.action) &&
-                message.type === SocketMessageType.notification
-            ) {
-                ctx.debug('[sysMessage]', message.msgId);
+            if (message && typeof message === 'object' && message?.action && message?.msgId && message.type === SocketMessageType.broadcast) {
                 const content = message.content.content as SocketSysMsgContent;
-                client.emit('sysMessage', content);
+                ctx.debug('[broadcast]', message.msgId);
+                client.emit('broadcast', content);
+                if (/^socket:.+$/i.test(message?.action)) {
+                    ctx.debug('[sysMessage]', message.msgId);
+                    client.emit('sysMessage', content);
+                }
                 return;
             }
         }

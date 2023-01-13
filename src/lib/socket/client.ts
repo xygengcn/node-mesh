@@ -1,12 +1,12 @@
 import { clientSocketBindMiddleware } from '@/middlewares/client-bind';
 import { clientMessageMiddleware } from '@/middlewares/client-message';
 import clientSysMsgMiddleware from '@/middlewares/client-sys';
-import { SocketMessage, SocketMessageType } from '@/typings/message';
+import { SocketBroadcastMsg, SocketBroadcastMsgContent, SocketMessage, SocketMessageType, SocketSysEvent } from '@/typings/message';
 import { ClientMiddleware, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketResponseAction, SocketType } from '@/typings/socket';
 import { compose, parseError, stringifyError, uuid } from '@/utils';
 import { Stream } from 'amp';
 import Message from 'amp-message';
-import { Socket, AddressInfo } from 'net';
+import { AddressInfo, Socket } from 'net';
 import Context from '../context';
 import Emitter from '../emitter';
 import BaseError from '../error';
@@ -276,6 +276,22 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     }
 
     /**
+     * 广播
+     * @param content
+     */
+    public broadcast<T extends SocketBroadcastMsgContent = SocketBroadcastMsgContent>(action: string | SocketSysEvent, content: T) {
+        const msgId = this.send<SocketBroadcastMsg>({
+            action: action || SocketSysEvent.socketNotification,
+            type: SocketMessageType.broadcast,
+            content: {
+                content
+            }
+        });
+        this.debug('[broadcast] 广播消息Id', msgId);
+        return msgId;
+    }
+
+    /**
      * 断开链接
      */
     public disconnect(error?: Error) {
@@ -327,7 +343,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @param msg
      * @returns
      */
-    public send(msg: Partial<SocketMessage>): string {
+    public send<T extends SocketMessage = SocketMessage>(msg: Partial<T>): string {
         if (!msg.action) return '';
         // 请求时间
         const requestTime = new Date().getTime();

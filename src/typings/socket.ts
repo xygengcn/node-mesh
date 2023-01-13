@@ -1,7 +1,7 @@
 import Context from '@/lib/context';
 import { Server, Socket } from 'net';
 import { ClientSocket } from '..';
-import { SocketMessage, SocketSysMsgContent } from './message';
+import { SocketBroadcastMsgContent, SocketMessage, SocketSysMsgContent } from './message';
 
 /**
  * 客户端和服务端的绑定状态
@@ -57,6 +57,7 @@ export interface ClientSocketEvent extends NetSocketEvent {
     send: (content: any) => void; // 回调发出消息
     message: (message: SocketMessage) => void; // 收到规范的消息了
     sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
+    broadcast: (content: SocketBroadcastMsgContent) => void; // 收到广播消息
     online: (socket: Socket) => void; // 自己上线成功
     offline: (socket: Socket) => void; // 自己下线成功
     reconnect: (socket: Socket) => void; // 开始重连
@@ -70,6 +71,7 @@ export interface ServerSocketEvent extends NetServerEvent {
     online: (socket: Server) => void; // 自己上线成功
     message: (message: SocketMessage, client: ClientSocket) => void; // // client send message
     sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
+    broadcast: (content: SocketBroadcastMsgContent) => void; // 收到广播消息
 }
 
 /**

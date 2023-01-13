@@ -4,10 +4,9 @@ import { SocketType } from './socket';
  * 消息类型
  */
 export enum SocketMessageType {
-    request = 'request',
-    publish = 'publish',
-    response = 'response',
-    notification = 'notification'
+    request = 'request', // 请求消息
+    response = 'response', // 请求回复消息
+    broadcast = 'broadcast' // 广播消息 包括系统通知消息
 }
 
 /**
@@ -39,18 +38,25 @@ export type SocketMessage<T = any | null> = {
  * 系统默认消息类型
  */
 export enum SocketSysEvent {
-    socketBind = 'socket:bind',
-    socketOnline = 'socket:online',
-    socketoffline = 'socket:offline'
+    socketBind = 'socket:bind', // 绑定通知
+    socketNotification = 'socket:notification', // 通用通知消息
+    socketOnline = 'socket:online', // 上线通知
+    socketoffline = 'socket:offline' // 下线通知
 }
+
+/**
+ * 广播消息
+ */
+export interface SocketBroadcastMsgContent<T = any, K extends string = string> {
+    content: T;
+    event: K;
+}
+export type SocketBroadcastMsg = SocketMessage<SocketBroadcastMsgContent>;
 
 /**
  * 系统消息类型
  */
-export interface SocketSysMsgContent<T = any, K extends SocketSysEvent = SocketSysEvent> {
-    content: T;
-    event: K;
-}
+export type SocketSysMsgContent<T = any, K extends SocketSysEvent = SocketSysEvent> = SocketBroadcastMsgContent<T, K>;
 
 /**
  * 客户端端上线和离线提醒内容

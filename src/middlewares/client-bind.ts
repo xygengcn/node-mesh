@@ -1,6 +1,6 @@
 import Context from '@/lib/context';
 import BaseError from '@/lib/error';
-import { SocketMessageType, SocketSysEvent, SocketSysMsgContent, SocketSysMsgOnlineOrOfflineContent } from '@/typings/message';
+import { SocketSysEvent, SocketSysMsgContent, SocketSysMsgOnlineOrOfflineContent } from '@/typings/message';
 import { ClientMiddleware, ClientSocketBindOptions, ServerSocketBindResult, SocketBindStatus } from '@/typings/socket';
 import { AddressInfo } from 'net';
 
@@ -67,15 +67,9 @@ export function clientSocketBindMiddleware(secret: string | undefined): ClientMi
                 ctx.log('[online]', '通知服务端，客户端绑定成功');
 
                 // 发送消息
-                ctx.send<SocketSysMsgOnlineOrOfflineContent>({
-                    action: SocketSysEvent.socketOnline,
-                    type: SocketMessageType.notification,
-                    content: {
-                        content: {
-                            event: SocketSysEvent.socketOnline,
-                            content: { clientId: ctx.id, serverId: ctx.client.targetId }
-                        }
-                    }
+                ctx.broadcast<SocketSysMsgOnlineOrOfflineContent>(SocketSysEvent.socketOnline, {
+                    event: SocketSysEvent.socketOnline,
+                    content: { clientId: ctx.id, serverId: ctx.client.targetId }
                 });
 
                 // 上线了

@@ -1,4 +1,4 @@
-import { SocketMessage, SocketMessageType } from '@/typings/message';
+import { SocketBroadcastMsgContent, SocketMessage, SocketMessageType, SocketSysEvent } from '@/typings/message';
 import { parseMessage } from '@/utils';
 import { Socket } from 'net';
 import Emitter from '../emitter';
@@ -55,6 +55,15 @@ export default class Context {
             return this.message;
         }
         return parseMessage(body || this.body) as SocketMessage;
+    }
+
+    /**
+     * 广播
+     * @param action
+     * @param content
+     */
+    public broadcast<T extends SocketBroadcastMsgContent = SocketBroadcastMsgContent>(action: string | SocketSysEvent, content: T): string {
+        return this.client.broadcast<T>(action, content);
     }
 
     /**

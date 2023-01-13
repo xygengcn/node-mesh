@@ -1,6 +1,6 @@
 import serverBindMiddleware from '@/middlewares/server-bind';
 import serverSysMsgMiddleware from '@/middlewares/server-sys';
-import { SocketMessage, SocketMessageType, SocketSysMsgOnlineOrOfflineContent, SocketSysEvent } from '@/typings/message';
+import { SocketMessage, SocketMessageType, SocketSysMsgOnlineOrOfflineContent, SocketSysEvent, SocketBroadcastMsgContent, SocketBroadcastMsg } from '@/typings/message';
 import { ClientMiddleware, ServerSocketEvent, ServerSocketOptions, SocketResponseAction, SocketType } from '@/typings/socket';
 import { uuid } from '@/utils';
 import net, { Server, Socket } from 'net';
@@ -185,21 +185,55 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     /**
      * 服务端广播
      *
-     * @todo 待测试
+     * 不限制广播类型
      *
      * @param action
      * @param content
      */
-    public broadcast<T = any>(message: Partial<SocketMessage<T>>, filters?: (client: ServerSocketOnlineClient) => boolean) {
-        this.debug('[broadcast]', '客户端:', this.onlineClients.size, '消息', message);
-        this.onlineClients.forEach((client) => {
-            // 客户端在线
-            if (client.socket.status === 'online') {
-                if ((filters && typeof filters === 'function' && filters(client)) || filters === undefined) {
-                    client.socket.send(message);
+    public broadcast(message: Partial<SocketBroadcastMsg>, filters?: (client: ServerSocketOnlineClient) => boolean): void;
+    public broadcast<T extends SocketBroadcastMsgContent = SocketBroadcastMsgContent>(action: string, content: T, filters?: (client: ServerSocketOnlineClient) => boolean): void;
+    public broadcast(action, content, filters?) {
+        if (this.status === 'running') {
+            this.debug('[server-broadcast]', '客户端:', this.onlineClients.size, '消息', action);
+            let message: Partial<SocketBroadcastMsg> | undefined = undefined;
+            let filterFunc: Function | undefined = undefined;
+            if (typeof action === 'string') {
+                message = {
+                    msgId: undefined,
+                    action,
+                    content: {
+                        content
+                    }
+                };
+                if (typeof filters === 'function') {
+                    filterFunc = filters;
                 }
             }
-        });
+            if (typeof action === 'object') {
+                message = action;
+                if (typeof content === 'function') {
+                    filterFunc = content;
+                }
+            }
+            if (message) {
+                this.onlineClients.forEach((client, socketId) => {
+                    // 客户端在线
+                    if (client.socket.status === 'online') {
+                        if ((filterFunc && typeof filterFunc === 'function' && filterFunc(client)) || filterFunc === undefined) {
+                            this.debug('[server-broadcast]', '开始推送客户端：', socketId);
+                            client.socket.send<SocketBroadcastMsg>({
+                                msgId: message?.msgId,
+                                action: message?.action || SocketSysEvent.socketNotification,
+                                type: SocketMessageType.broadcast,
+                                content: message?.content
+                            });
+                        }
+                    }
+                });
+            }
+            return;
+        }
+        this.logError('[server-broadcast]', '服务群未启动', action);
     }
 
     /**
@@ -384,13 +418,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
             this.emit('sysMessage', content);
 
             // 广播到其他客户端
-            this.broadcast({
-                action: SocketSysEvent.socketoffline,
-                type: SocketMessageType.notification,
-                content: {
-                    content
-                }
-            });
+            this.broadcast(SocketSysEvent.socketoffline, content);
         });
 
         // 处理消息
