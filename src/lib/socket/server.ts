@@ -118,7 +118,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     public request<T = any>(action: string, params: string | number | object): Promise<T>;
     public async request(action, params, callback?): Promise<any> {
         // 日志
-        this.log('[request]', '服务端请求，action:', action);
+        this.log('[request-send]', '服务端请求，action:', action);
 
         if (!action || typeof action !== 'string') {
             return Promise.reject(new BaseError(30001, 'Action is required'));
@@ -449,7 +449,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         return async (ctx: Context, next) => {
             const message: SocketMessage = ctx.toJson();
             if (message && typeof message === 'object' && message.action && message.type === 'request' && message.targetId === ctx.id && message.msgId) {
-                this.debug('[client-request]', '来自客户端的请求:', message);
+                this.debug('[request-received]', '来自客户端的请求:', message);
                 if (this.responseAction.has(message.action)) {
                     // 注册方法
                     this.handleServerAction(message.action, message.content?.content || '', (developerMsg, content) => {

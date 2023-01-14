@@ -27,7 +27,7 @@ export function clientMessageMiddleware(): ClientMiddleware {
                 // 自己发出request请求，别人回答了，收到回调 如果是在线状态需要校验targetId
                 if (message.type === 'response') {
                     // 日志
-                    ctx.debug('[message-response]', '这是一条回调消息:', message.msgId);
+                    ctx.debug('[response-message]', '这是一条回调消息:', message.msgId);
                     // 触发请求回调
                     ctx.client.emit(message.msgId as any, message.content.developerMsg, message.content.content);
                     return;

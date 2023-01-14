@@ -20,12 +20,6 @@ export default function serverSysMsgMiddleware(server: ServerSocket): ClientMidd
             // 广播消息
             if (message && typeof message === 'object' && message?.action && message?.msgId && message.type === SocketMessageType.broadcast) {
                 const sysMsgContent = message.content.content as SocketBroadcastMsgContent;
-                // 系统通知
-                if (/^socket:.+$/i.test(message?.action)) {
-                    server.emit('sysMessage', sysMsgContent as SocketSysMsgContent);
-                }
-                // 默认广播消息
-                server.emit('broadcast', sysMsgContent);
                 switch (message.action) {
                     case SocketSysEvent.socketOnline: {
                         // 客户端上线
@@ -33,6 +27,13 @@ export default function serverSysMsgMiddleware(server: ServerSocket): ClientMidd
                         break;
                     }
                 }
+                // 系统通知
+                if (/^socket:.+$/i.test(message?.action)) {
+                    server.emit('sysMessage', sysMsgContent as SocketSysMsgContent);
+                }
+                // 默认广播消息
+                server.emit('broadcast', sysMsgContent);
+
                 // 广播消息
                 server.broadcast(
                     {

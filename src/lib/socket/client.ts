@@ -198,7 +198,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     public request<T = any>(action: string, params: string | number | object): Promise<T>;
     public async request(action, params, callback?): Promise<any> {
         // 日志
-        this.log('[request]', '客户端请求，action:', action);
+        this.log('[request-send]', '客户端请求，action:', action);
 
         if (!action || typeof action !== 'string') {
             return Promise.reject(new BaseError(30001, 'Action is required'));
@@ -287,7 +287,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                 content
             }
         });
-        this.debug('[broadcast] 广播消息Id', msgId);
+        this.debug('[broadcast-send] 广播消息Id', msgId);
         return msgId;
     }
 
@@ -395,7 +395,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             const msgId = this.msgId();
 
             // log
-            this.log('[requestMessage]', 'action:', action, '发出消息:', msgId);
+            this.log('[request-message]', 'action:', action, '发出消息:', msgId);
 
             // 存在回调
             if (callback && typeof callback === 'function') {
@@ -423,7 +423,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                 this.once(msgId as any, (error, ...result) => {
                     clearTimerEvent();
                     // 日志
-                    this.log('[requestMessage]', '收到消息回调:', msgId);
+                    this.log('[request-message-receive]', '收到消息回调:', msgId);
 
                     // 需要处理错误信息
                     callback(parseError(error), ...result);
