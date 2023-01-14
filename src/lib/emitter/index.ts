@@ -55,11 +55,11 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param title
      * @param args
      */
-    public logError(title: string, ...args: any[]) {
+    public logError(title: string, errorMsg: Error) {
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
-        Number(process.env.DEBUG_LEVEL || 0) <= 3 && error(cyanColor(time), `[NS-${this.namespace}]`, blueColor(title), ...args);
-        this.emit('logger', 'error', title, ...args);
+        Number(process.env.DEBUG_LEVEL || 0) <= 3 && error(cyanColor(time), `[NS-${this.namespace}]`, blueColor(title), errorMsg);
+        this.emit('logger', 'error', title, errorMsg);
     }
 
     /**

@@ -54,7 +54,7 @@ export function clientSocketBindMiddleware(secret: string | undefined): ClientMi
 
                 // 存在的错误，绑定失败
                 if (error || result.content.status !== SocketBindStatus.success) {
-                    ctx.logError('[bind:error] ', ctx.client.status, result, error);
+                    ctx.logError('[bind:error] ', new BaseError(30009, error || 'Client bind error'));
                     ctx.client.disconnect(error || new BaseError(30009, error || 'Client bind error'));
                     return;
                 }

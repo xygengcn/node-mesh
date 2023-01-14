@@ -13,8 +13,8 @@ export default class BaseError extends Error {
     public error!: Error | null;
 
     // 构造函数
-    constructor(code: string | number, error: Error | null | string) {
-        super(typeof error === 'string' ? error : error?.message, { cause: typeof error !== 'string' && error?.cause });
+    constructor(code: string | number, error: Error | null | string, cause?: unknown) {
+        super(typeof error === 'string' ? error : error?.message, { cause: cause || (typeof error !== 'string' && error?.cause) });
         if (error instanceof Error && (error as any).code) {
             code = (error as any).code;
         }

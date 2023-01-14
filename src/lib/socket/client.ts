@@ -250,8 +250,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         }
 
         // 错误处理
-
-        this.logError('[request]', '发送失败', 'socket状态:', this.status);
+        this.logError('[request]', new BaseError(30013, '客户端请求失败', { action, params, status: this.status }));
 
         // 返回失败
         this.emit('error', new BaseError(30002, "Socket isn't connect !"));
@@ -296,7 +295,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      */
     public disconnect(error?: Error) {
         if (error) {
-            this.logError('[disconnect]', '客户端断开，当前状态：', this.status, '错误', error);
+            this.logError('[disconnect]', new BaseError(30014, error));
         } else {
             this.debug('[disconnect]', '客户端断开，当前状态：', this.status);
         }
@@ -378,7 +377,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             return msgId;
         } else {
             // action 和 targetId 是必要的
-            this.logError('[send] action and targetId is requred', msgId, socketMessage.action, socketMessage.targetId);
+            this.logError('[send]', new BaseError(30015, '参数错误'));
         }
         return '';
     }
@@ -474,7 +473,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         const message = new Message(args);
         this.socket.write(message.toBuffer(), (e) => {
             if (e) {
-                this.logError('[write]', '发送失败', e, ...args);
+                this.logError('[write]', e || new BaseError(30004, 'Socket write error'));
                 this.emit('error', e || new BaseError(30004, 'Socket write error'));
             }
         });

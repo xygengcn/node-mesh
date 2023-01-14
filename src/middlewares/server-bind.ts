@@ -1,3 +1,4 @@
+import BaseError from '@/lib/error';
 import type ServerSocket from '../lib/socket/server';
 import { ClientMiddleware, ClientSocketBindOptions, ServerSocketBindResult, SocketBindStatus, SocketType } from '@/typings/socket';
 import { SocketMessage, SocketSysEvent, SocketSysMsgContent } from '@/typings/message';
@@ -71,7 +72,7 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
                     }
 
                     // 检验失败
-                    server.logError('[server-bind]', 'auth验证失败', bind);
+                    server.logError('[server-bind]', new BaseError(30009, new Error('auth验证失败', { cause: { bind } })));
                     ctx.json<SocketSysMsgContent<ServerSocketBindResult>>({
                         event: SocketSysEvent.socketBind,
                         content: {
@@ -82,7 +83,7 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
                 }
 
                 // 返回失败信息
-                server.logError('[server-bind] serverID验证失败', bind);
+                server.logError('[server-bind]', new BaseError(30009, new Error('serverID验证失败', { cause: { bind } })));
                 ctx.json<SocketSysMsgContent<ServerSocketBindResult>>({
                     event: SocketSysEvent.socketBind,
                     content: {

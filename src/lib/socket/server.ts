@@ -233,7 +233,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
             }
             return;
         }
-        this.logError('[server-broadcast]', '服务群未启动', action);
+        this.logError('[server-broadcast]', new BaseError(30012, '服务器未启动'));
     }
 
     /**
