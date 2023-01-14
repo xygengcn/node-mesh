@@ -62,6 +62,16 @@ describe('服务端请求客户端测试', () => {
                     });
             });
         });
-        // it('客户端注册，客户端离线，服务端请求，请求失败', (done) => {});
+        it('客户端注册，客户端离线，服务端请求，请求失败', (done) => {
+            server
+                .request('client/response', 'hello')
+                .then(() => {
+                    assert.fail('错误');
+                })
+                .catch((e) => {
+                    assert.equal(e.code, 30007);
+                    done();
+                });
+        });
     });
 });
