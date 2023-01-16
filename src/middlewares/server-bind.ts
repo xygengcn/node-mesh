@@ -10,7 +10,7 @@ import Context from '@/lib/context';
  * @param tempSocketId
  * @returns
  */
-export default function serverBindMiddleware(server: ServerSocket, tempSocketId: string): ClientMiddleware {
+export default function serverBindMiddleware(server: ServerSocket): ClientMiddleware {
     return (ctx: Context, next) => {
         if (ctx.body) {
             const message: SocketMessage = ctx.toJson();
@@ -25,7 +25,16 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
                 ctx.client.configure({ targetId: bind.clientId });
 
                 // 生成socketId
-                const socketId = `${server.serverId}-${bind.clientId}`;
+                const socketId = ctx.client.getSocketId();
+
+                // 获取客户端
+                const client = server.clients.get(socketId);
+                if (client) {
+                    client.clearBindSetTimeout();
+                } else {
+                    server.logError('[server-bind]', new BaseError(30009, new Error(socketId + '客户端不存在')));
+                    return;
+                }
 
                 server.debug('[server-bind]', ' 收到客户端绑定信息', 'socketId:', socketId, 'requestId:', message.msgId);
 
@@ -35,11 +44,12 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
                     if (server.checkSecret(bind.secret)) {
                         // 绑定成功
                         const responseActions = new Set(bind.responseActions || []);
-                        server.onlineClients.set(socketId, { socket: ctx.client, responseActions });
 
                         // 开始注册动作
                         responseActions.forEach((actionKey) => {
-                            // 如果注册过，则移除
+                            // 把客户端带过来的keys放到服务端对应的客户端副本
+                            client.responseActionKeys.add(actionKey);
+                            // 注册到服务端，如果注册过，则移除
                             if (server.responseAction.has(actionKey)) {
                                 const response = server.responseAction.get(actionKey);
                                 // 服务端优先级高
@@ -56,10 +66,7 @@ export default function serverBindMiddleware(server: ServerSocket, tempSocketId:
                         // 状态在线
                         ctx.client.status = 'online';
                         // log
-                        server.success('[server-bind]', `绑定客户度端成功, 由${tempSocketId}正式切换到${socketId}`);
-
-                        // 移除临时绑定
-                        server.connectClients.delete(tempSocketId);
+                        server.success('[server-bind]', '绑定客户度端成功:', bind.clientId);
 
                         // 回传消息
                         ctx.json<SocketSysMsgContent<ServerSocketBindResult>>({

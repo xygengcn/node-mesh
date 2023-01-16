@@ -1,5 +1,6 @@
 import assert from 'assert';
 import { ClientSocket, ServerSocket } from '../src/index';
+import net from 'net';
 
 const server = new ServerSocket({ port: 3000, serverId: 'server1' });
 
@@ -76,6 +77,17 @@ describe('客户端和服务端的绑定测试', () => {
             client.once('afterBind', (result) => {
                 assert.equal(result.status, 3);
                 client.off();
+                done();
+            });
+        });
+    });
+
+    describe('测试客户端和服务端 超时绑定，其他乱入绑定', () => {
+        it('error code === 30016', (done) => {
+            const socket = new net.Socket();
+            socket.connect({ port: 3000, host: '0.0.0.0' });
+            server.once('error', (error: any) => {
+                assert.equal(error.code, 30016);
                 done();
             });
         });

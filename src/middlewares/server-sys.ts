@@ -45,7 +45,7 @@ export default function serverSysMsgMiddleware(server: ServerSocket): ClientMidd
                     },
                     (client) => {
                         // 不推给自己
-                        return client.socket.targetId !== message.fromId;
+                        return client.targetId !== message.fromId;
                     }
                 );
                 return;

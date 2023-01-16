@@ -6,7 +6,7 @@ import { ClientMiddleware, ClientSocketEvent, ClientSocketOptions, ClientSocketS
 import { compose, parseError, stringifyError, uuid } from '@/utils';
 import { Stream } from 'amp';
 import Message from 'amp-message';
-import { AddressInfo, Socket } from 'net';
+import { Socket } from 'net';
 import Context from '../context';
 import Emitter from '../emitter';
 import BaseError from '../error';
@@ -111,8 +111,11 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      *
      * @param options
      */
-    public configure(options: Partial<Pick<ClientSocketOptions, 'targetId' | 'timeout' | 'retryDelay'>>) {
-        Object.assign(this.options, options || {});
+    public configure(options: Partial<Pick<ClientSocketOptions, 'targetId' | 'timeout' | 'retryDelay'>>): ClientSocketOptions {
+        if (options) {
+            Object.assign(this.options, options || {});
+        }
+        return this.options;
     }
 
     /**
@@ -125,7 +128,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         }
 
         if (!this.options.port) {
-            this.emit('error', new TypeError('port为空'));
+            this.emit('error', new BaseError(30010, 'port为空'));
         }
 
         // 在线不需要连接
@@ -142,7 +145,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
         // 链接事件
         this.socket.once('connect', () => {
-            this.debug('[connect]', '连接到服务端', this.socket.address(), this.socket.localAddress);
+            this.debug('[connect]', '连接到服务端', this.socket.address(), 'socketId', this.getSocketId());
             // 解除手动限制，手动断开后手动连接后的自动重连
             this.isManualClose = false;
 
@@ -291,6 +294,17 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     }
 
     /**
+     * 获取socketId
+     * @returns
+     */
+    public getSocketId(): string {
+        if (this.options.type === 'server') {
+            return `${this.socket.remoteFamily}://${this.socket.remoteAddress}:${this.socket.remotePort}`;
+        }
+        return `${this.socket.localFamily}://${this.socket.localAddress}:${this.socket.localPort}`;
+    }
+
+    /**
      * 断开链接
      */
     public disconnect(error?: Error) {
@@ -349,14 +363,12 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         // 生成唯一id
         const msgId = msg.msgId || this.msgId();
 
-        const addressInfo: AddressInfo = this.socket.address() as AddressInfo;
         // 发送内容
         const socketMessage: SocketMessage = {
             action: msg.action,
             type: msg.type || SocketMessageType.request,
             headers: {
-                host: addressInfo.address,
-                port: addressInfo.port
+                origin: this.getSocketId()
             },
             content: {
                 content: msg.content?.content,
@@ -366,8 +378,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             msgId,
             time: requestTime,
             targetId: this.targetId, // 接收端
-            fromId: this.clientId, // 发送端
-            fromType: this.options.type || SocketType.client
+            fromId: this.clientId // 发送端
         };
         // 发送
         if (socketMessage.action && socketMessage.targetId) {
@@ -386,9 +397,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 封装发送消息
      * @param args
      */
-    private requestMessage(action: string, content: string | number | object, callback: false): void;
-    private requestMessage(action: string, content: string | number | object, callback: (error: Error | null, ...result: any[]) => void): void;
-    private requestMessage(action, content, callback) {
+    private requestMessage(action: string, content: string | number | object, callback: (error: Error | null, ...result: any[]) => void) {
         if (this.socket) {
             // 生成唯一id
             const msgId = this.msgId();

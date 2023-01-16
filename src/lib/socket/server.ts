@@ -2,12 +2,12 @@ import serverBindMiddleware from '@/middlewares/server-bind';
 import serverSysMsgMiddleware from '@/middlewares/server-sys';
 import { SocketMessage, SocketMessageType, SocketSysMsgOnlineOrOfflineContent, SocketSysEvent, SocketBroadcastMsgContent, SocketBroadcastMsg } from '@/typings/message';
 import { ClientMiddleware, ServerSocketEvent, ServerSocketOptions, SocketResponseAction, SocketType } from '@/typings/socket';
-import { uuid } from '@/utils';
 import net, { Server, Socket } from 'net';
 import Context from '../context';
 import Emitter from '../emitter';
 import BaseError from '../error';
 import ClientSocket from './client';
+import ServerClientSocket from './server-client';
 
 /**
  * 服务端状态
@@ -29,14 +29,6 @@ type ServerSocketResponse =
       };
 
 /**
- * 服务端上线的客户端
- */
-interface ServerSocketOnlineClient {
-    socket: ClientSocket;
-    responseActions: Set<string>;
-}
-
-/**
  * 服务端
  */
 export default class ServerSocket extends Emitter<ServerSocketEvent> {
@@ -44,10 +36,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     public status: ServerSocketStatus = 'waiting';
 
     // 客户端
-    public onlineClients: Map<string, ServerSocketOnlineClient> = new Map();
-
-    // 临时客户端
-    public connectClients: Map<string, ClientSocket> = new Map();
+    public clients: Map<string, ServerClientSocket> = new Map();
 
     // 记录注册的函数 response：是否回调给客户端
     public responseAction: Map<string, ServerSocketResponse> = new Map();
@@ -76,21 +65,16 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
      * 停止
      */
     public async stop() {
-        const count = await this.getConnections();
-        this.log('[stop]', '目前连接数', count);
-        this.server.close();
         this.status = 'stop';
+        const count = await this.getConnections();
+        this.log('[stop]', '目前连接数', count, '客户端数量', this.clients.size);
         // 停止后把所有的客户端断开
-        this.onlineClients.forEach((c) => {
-            c.socket.disconnect();
-            c.socket.off();
-            this.handleClientRemove(c.socket.targetId);
-        });
-        this.connectClients.forEach((client) => {
+        this.clients.forEach((client) => {
+            this.handleClientRemove(client);
             client.disconnect();
             client.off();
-            this.handleClientRemove(client.targetId);
         });
+        this.server.close();
     }
 
     /**
@@ -158,8 +142,11 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
      *
      * @param options
      */
-    public configure(options: Partial<Pick<ServerSocketOptions, 'secret'>>) {
-        Object.assign(this.options, options || {});
+    public configure(options: Partial<Pick<ServerSocketOptions, 'secret'>>): ServerSocketOptions {
+        if (options) {
+            Object.assign(this.options, options || {});
+        }
+        return this.options;
     }
 
     /**
@@ -190,11 +177,11 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
      * @param action
      * @param content
      */
-    public broadcast(message: Partial<SocketBroadcastMsg>, filters?: (client: ServerSocketOnlineClient) => boolean): void;
-    public broadcast<T extends SocketBroadcastMsgContent = SocketBroadcastMsgContent>(action: string, content: T, filters?: (client: ServerSocketOnlineClient) => boolean): void;
+    public broadcast(message: Partial<SocketBroadcastMsg>, filters?: (client: ServerClientSocket) => boolean): void;
+    public broadcast<T extends SocketBroadcastMsgContent = SocketBroadcastMsgContent>(action: string, content: T, filters?: (client: ServerClientSocket) => boolean): void;
     public broadcast(action, content, filters?) {
         if (this.status === 'running') {
-            this.debug('[server-broadcast]', '客户端:', this.onlineClients.size, '消息', action);
+            this.debug('[server-broadcast]', '客户端:', this.clients.size, '消息', action);
             let message: Partial<SocketBroadcastMsg> | undefined = undefined;
             let filterFunc: Function | undefined = undefined;
             if (typeof action === 'string') {
@@ -216,12 +203,12 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
                 }
             }
             if (message) {
-                this.onlineClients.forEach((client, socketId) => {
+                this.clients.forEach((client, socketId) => {
                     // 客户端在线
-                    if (client.socket.status === 'online') {
+                    if (client.status === 'online') {
                         if ((filterFunc && typeof filterFunc === 'function' && filterFunc(client)) || filterFunc === undefined) {
                             this.debug('[server-broadcast]', '开始推送客户端：', socketId);
-                            client.socket.send<SocketBroadcastMsg>({
+                            client.send<SocketBroadcastMsg>({
                                 msgId: message?.msgId,
                                 action: message?.action || SocketSysEvent.socketNotification,
                                 type: SocketMessageType.broadcast,
@@ -319,18 +306,18 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
                     return;
                 }
                 // 有此客户端
-                const socket = this.onlineClients.get(responseAction.socketId);
+                const socket = this.clients.get(responseAction.socketId);
 
                 // 客户端不在线
-                if (socket?.socket.status !== 'online') {
+                if (socket?.status !== 'online') {
                     callback(new BaseError(30007, 'Action is not active'), null);
                     return;
                 }
 
                 // 客户端有这个动作
-                if (socket && socket.responseActions.has(action) && socket.socket.status === 'online') {
+                if (socket && socket.responseActionKeys.has(action) && socket.status === 'online') {
                     // 请求客户端
-                    socket.socket
+                    socket
                         .request(action, params)
                         .then((result) => {
                             callback(null, result);
@@ -351,32 +338,18 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
      */
 
     private handleClientConnect(socket: Socket) {
-        // 临时id，绑定成功就会被移除
-        const tempSocketId = `temp-${this.options.serverId}-${uuid()}`;
+        // 建立客户端
+        const client = new ServerClientSocket(this.options.serverId, socket);
 
-        this.log('[client-connnect]', '监听到客户端', 'address: ', socket.address(), 'localAddress: ', socket.localAddress, '临时id: ', tempSocketId);
+        this.log('[client-connnect]', '监听到客户端', 'socketId: ', client.getSocketId());
 
         this.emit('connect', socket);
 
-        const addressInfo = socket.address() as net.AddressInfo;
-        // 建立客户端
-        const client = new ClientSocket(
-            {
-                port: addressInfo.port,
-                host: addressInfo.address,
-                type: SocketType.server,
-                retry: false,
-                clientId: this.options.serverId,
-                targetId: ''
-            },
-            socket
-        );
-
-        // 临时绑定
-        this.connectClients.set(tempSocketId, client);
+        // 绑定
+        this.clients.set(client.getSocketId(), client);
 
         // 处理绑定事件
-        client.use('data', serverBindMiddleware(this, tempSocketId));
+        client.use('data', serverBindMiddleware(this));
 
         // 处理请求事件
         client.use('data', this.handleClientRequestEvent());
@@ -402,7 +375,13 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         client.on('disconnect', () => {
             this.debug('[client-disconnect]', client.targetId);
             client.off();
-            this.handleClientRemove(client.targetId);
+            this.handleClientRemove(client);
+        });
+
+        // 错误提示
+        client.on('error', (e) => {
+            this.logError('[client-error]', e);
+            this.emit('error', e);
         });
 
         // 下线通知
@@ -435,11 +414,10 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
      *
      * @param clientId
      */
-    private handleClientRemove(clientId: string) {
-        const socketId = `${this.options.serverId}-${clientId}`;
+    private handleClientRemove(client: ClientSocket) {
+        const socketId = client.getSocketId();
         // 移除客户端
-        this.connectClients.delete(socketId);
-        this.onlineClients.delete(socketId);
+        this.clients.delete(socketId);
     }
 
     /**
