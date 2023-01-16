@@ -67,9 +67,9 @@ export function clientSocketBindMiddleware(secret: string | undefined): ClientMi
                 ctx.log('[online]', '通知服务端，客户端绑定成功');
 
                 // 发送消息
-                ctx.broadcast<SocketSysMsgOnlineOrOfflineContent>(SocketSysEvent.socketOnline, {
+                ctx.broadcast<SocketSysMsgOnlineOrOfflineContent>(SocketSysEvent.socketNotification, {
                     event: SocketSysEvent.socketOnline,
-                    content: { clientId: ctx.id, serverId: ctx.client.targetId }
+                    content: { clientId: ctx.id, serverId: ctx.client.targetId, socketId: ctx.client.getSocketId() }
                 });
 
                 // 上线了

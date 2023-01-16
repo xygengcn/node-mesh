@@ -63,7 +63,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
     // 构造
     constructor(options: ClientSocketOptions, socket?: Socket) {
-        const namespace = `Socket-${options.type || SocketType.client}_${options.clientId}`;
+        const namespace = `Socket-${options.type || SocketType.client}_${options.type ? options.targetId : options.clientId}`;
         super(namespace);
         // 配置初始化
         this.configure(options);
@@ -299,9 +299,9 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      */
     public getSocketId(): string {
         if (this.options.type === 'server') {
-            return `${this.socket.remoteFamily}://${this.socket.remoteAddress}:${this.socket.remotePort}`;
+            return `${this.socket.remoteFamily || 'IPv4'}://${this.socket.remoteAddress}:${this.socket.remotePort}`;
         }
-        return `${this.socket.localFamily}://${this.socket.localAddress}:${this.socket.localPort}`;
+        return `${this.socket.localFamily || 'IPv4'}://${this.socket.localAddress}:${this.socket.localPort}`;
     }
 
     /**
@@ -382,7 +382,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         };
         // 发送
         if (socketMessage.action && socketMessage.targetId) {
-            this.debug('[send]', msg);
+            this.debug('[send]', '客户端状态', this.status, '消息', msg);
             this.emit('send', socketMessage);
             this.write(socketMessage);
             return msgId;
@@ -478,13 +478,15 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 发送消息
      * @param args
      */
-    private write(...args: any[]): void {
-        const message = new Message(args);
+    private write(msg: SocketMessage): void {
+        const message = new Message([msg]);
         this.socket.write(message.toBuffer(), (e) => {
             if (e) {
-                this.logError('[write]', e || new BaseError(30004, 'Socket write error'));
-                this.emit('error', e || new BaseError(30004, 'Socket write error'));
+                this.logError('[write]', new BaseError(30004, e));
+                this.emit('error', new BaseError(30004, e));
+                return;
             }
+            this.log('[write]', '消息', msg.msgId);
         });
     }
 
@@ -511,8 +513,9 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         // 有错误发生调用的事件
         this.socket.on('error', (e: Error & { code: string }) => {
             // 日志
-            this.logError('[error]', e);
+            this.logError('[client-error]', e);
             this.status = 'error';
+
             this.emit('error', e);
 
             if (e.code === 'ECONNREFUSED') {

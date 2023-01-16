@@ -254,7 +254,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
         //设置出错时的回调函数
         this.server.on('error', (e) => {
-            this.logError('[error]', e);
+            this.logError('[server-error]', e);
             this.status = 'stop';
             this.emit('error', e);
         });
@@ -380,7 +380,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
         // 错误提示
         client.on('error', (e) => {
-            this.logError('[client-error]', e);
+            this.logError('[server-client-error]', e);
             this.emit('error', e);
         });
 
@@ -390,7 +390,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
             // 自己发出客户端下线通知
             const content: SocketSysMsgOnlineOrOfflineContent = {
                 event: SocketSysEvent.socketoffline,
-                content: { clientId: client.targetId, serverId: this.options.serverId }
+                content: { clientId: client.targetId, serverId: this.options.serverId, socketId: client.getSocketId() }
             };
 
             // 回调

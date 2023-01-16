@@ -32,8 +32,8 @@ export type SocketMessage<T = any | null> = {
 export enum SocketSysEvent {
     socketBind = 'socket:bind', // 绑定通知
     socketNotification = 'socket:notification', // 通用通知消息
-    socketOnline = 'socket:online', // 上线通知
-    socketoffline = 'socket:offline' // 下线通知
+    socketOnline = 'socket:online', // 其他客户端上线通知
+    socketoffline = 'socket:offline' // 其他客户端下线通知
 }
 
 /**
@@ -53,4 +53,7 @@ export type SocketSysMsgContent<T = any, K extends SocketSysEvent = SocketSysEve
 /**
  * 客户端端上线和离线提醒内容
  */
-export type SocketSysMsgOnlineOrOfflineContent = SocketSysMsgContent<{ clientId: string; serverId: string }, SocketSysEvent.socketOnline | SocketSysEvent.socketoffline>;
+export type SocketSysMsgOnlineOrOfflineContent = SocketSysMsgContent<
+    { clientId: string; serverId: string; socketId: string },
+    SocketSysEvent.socketOnline | SocketSysEvent.socketoffline
+>;

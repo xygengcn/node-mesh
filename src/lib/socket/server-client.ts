@@ -24,7 +24,7 @@ export default class ServerClientSocket extends ClientSocket {
             type: SocketType.server,
             retry: false,
             clientId: serverId,
-            targetId: ''
+            targetId: String(socket.remotePort)
         };
         super(options, socket);
 

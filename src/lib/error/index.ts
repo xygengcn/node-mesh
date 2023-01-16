@@ -18,7 +18,7 @@ export default class BaseError extends Error {
         if (error instanceof Error && (error as any).code) {
             code = (error as any).code;
         }
-        Object.assign(this, { code, error });
+        Object.assign(this, { code, error: error instanceof Error ? error.message : error });
     }
 
     // 转换成数据
