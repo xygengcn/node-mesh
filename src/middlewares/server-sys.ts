@@ -1,5 +1,14 @@
 import Context from '@/lib/context';
-import { SocketBroadcastMsgContent, SocketMessage, SocketMessageType, SocketSysEvent, SocketSysMsgOnlineOrOfflineContent, SocketSysMsgContent } from '@/typings/message';
+import BaseError from '@/lib/error';
+import {
+    SocketBroadcastMsgContent,
+    SocketMessage,
+    SocketMessageType,
+    SocketSysEvent,
+    SocketSysMsgOnlineOrOfflineContent,
+    SocketSysMsgContent,
+    SocketSysMsgSubscribeContent
+} from '@/typings/message';
 import { ClientMiddleware } from '@/typings/socket';
 import type ServerSocket from '../lib/socket/server';
 
@@ -19,6 +28,27 @@ function serverSysNotificationMsg(server: ServerSocket, message: SocketMessage) 
                 (sysMsgContent as SocketSysMsgOnlineOrOfflineContent).content.clientId,
                 (sysMsgContent as SocketSysMsgOnlineOrOfflineContent).content.socketId
             );
+            break;
+        }
+        case SocketSysEvent.socketSub: {
+            const content: SocketSysMsgSubscribeContent['content'] = sysMsgContent.content;
+            // 客户端上线
+            server.debug('[client-sub]', '客户端订阅更新', content);
+
+            // 开始处理
+            if (content.socketId) {
+                const client = server.clients.get(content.socketId);
+                if (client) {
+                    if (content.subscribe) {
+                        client.subscribe(content.action);
+                    } else {
+                        client.unsubscribe(content.action);
+                    }
+                } else {
+                    server.logError('[client-sub]', new BaseError(30017, '没找到客户端', content));
+                }
+            }
+
             break;
         }
     }
@@ -41,6 +71,9 @@ export default function serverSysMsgMiddleware(server: ServerSocket): ClientMidd
             // 广播消息
             if (message && typeof message === 'object' && message?.action && message?.msgId && message.type === SocketMessageType.broadcast) {
                 const sysMsgContent = message.content.content as SocketBroadcastMsgContent;
+
+                // 日志
+                server.log('[server-broadcast-receive]', '事件', sysMsgContent.event, '消息', message.msgId);
 
                 // 系统通知
                 if (/^socket:.+$/i.test(message?.action)) {

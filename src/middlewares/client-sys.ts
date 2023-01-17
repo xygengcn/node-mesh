@@ -15,7 +15,7 @@ export default function clientSysMsgMiddleware(client: ClientSocket): ClientMidd
             // 系统通知
             if (message && typeof message === 'object' && message?.action && message?.msgId && message.type === SocketMessageType.broadcast) {
                 const content = message.content.content as SocketSysMsgContent;
-                ctx.log('[broadcast-receive]', message.msgId);
+                ctx.log('[broadcast-receive]', '事件', content.event, '消息', message.msgId);
                 client.emit('broadcast', content);
                 if (/^socket:.+$/i.test(message?.action)) {
                     ctx.log('[sysMessage-receive]', message.msgId);

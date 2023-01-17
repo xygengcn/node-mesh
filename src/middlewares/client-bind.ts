@@ -31,6 +31,7 @@ export function clientSocketBindMiddleware(secret: string | undefined): ClientMi
                 port: addressInfo.port,
                 host: addressInfo.address,
                 secret: secret,
+                subscription: ctx.client.subscription() || [],
                 responseActions: ctx.client.responseKeys()
             },
             event: SocketSysEvent.socketBind

@@ -4,6 +4,7 @@
 export enum SocketMessageType {
     request = 'request', // 请求消息
     response = 'response', // 请求回复消息
+    subscribe = 'subscribe', // 订阅消息
     broadcast = 'broadcast' // 广播消息 包括系统通知消息
 }
 
@@ -33,7 +34,8 @@ export enum SocketSysEvent {
     socketBind = 'socket:bind', // 绑定通知
     socketNotification = 'socket:notification', // 通用通知消息
     socketOnline = 'socket:online', // 其他客户端上线通知
-    socketoffline = 'socket:offline' // 其他客户端下线通知
+    socketoffline = 'socket:offline', // 其他客户端下线通知
+    socketSub = 'socket:sub' // 客户端增加订阅
 }
 
 /**
@@ -57,3 +59,8 @@ export type SocketSysMsgOnlineOrOfflineContent = SocketSysMsgContent<
     { clientId: string; serverId: string; socketId: string },
     SocketSysEvent.socketOnline | SocketSysEvent.socketoffline
 >;
+
+/**
+ * 客户端订阅和取消订阅的通知消息
+ */
+export type SocketSysMsgSubscribeContent = SocketSysMsgContent<{ action: string; subscribe: boolean; socketId: string }, SocketSysEvent.socketSub>;

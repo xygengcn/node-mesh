@@ -1,12 +1,12 @@
 import { clientSocketBindMiddleware } from '@/middlewares/client-bind';
 import { clientMessageMiddleware } from '@/middlewares/client-message';
 import clientSysMsgMiddleware from '@/middlewares/client-sys';
-import { SocketBroadcastMsg, SocketBroadcastMsgContent, SocketMessage, SocketMessageType, SocketSysEvent } from '@/typings/message';
-import { ClientMiddleware, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketResponseAction, SocketType } from '@/typings/socket';
+import { SocketBroadcastMsg, SocketBroadcastMsgContent, SocketMessage, SocketMessageType, SocketSysEvent, SocketSysMsgSubscribeContent } from '@/typings/message';
+import { ClientMiddleware, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketCallback, SocketResponseAction, SocketType } from '@/typings/socket';
 import { compose, parseError, stringifyError, uuid } from '@/utils';
 import { Stream } from 'amp';
 import Message from 'amp-message';
-import { Socket } from 'net';
+import { Socket, AddressInfo } from 'net';
 import Context from '../context';
 import Emitter from '../emitter';
 import BaseError from '../error';
@@ -42,6 +42,9 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     public get isServer(): boolean {
         return this.options.type === SocketType.server;
     }
+
+    // 记录订阅的key
+    private subscriptions: Set<string> = new Set();
 
     // 配置
     private options: ClientSocketOptions = { retry: true, host: '0.0.0.0', port: 31000, type: SocketType.client, clientId: 'Client', targetId: 'Server' };
@@ -141,7 +144,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         this.status = 'pending';
 
         // 开始链接
-        this.socket.connect(this.options.port, this.options.host);
+        this.socket.connect({ port: this.options.port, host: this.options.host, family: 4 });
 
         // 链接事件
         this.socket.once('connect', () => {
@@ -294,14 +297,76 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     }
 
     /**
+     * 发布消息
+     * @param action
+     * @param content
+     */
+    public publish<T = any>(action: string, content: T, developerMsg: Error | undefined = undefined) {
+        return this.send({
+            action,
+            type: SocketMessageType.subscribe,
+            content: {
+                content,
+                developerMsg
+            }
+        });
+    }
+
+    /**
+     * 订阅消息
+     *
+     * sub:{action}s
+     *
+     * @param action
+     * @param cb
+     */
+    public subscribe(action: string, cb?: SocketCallback) {
+        // 已经是在线，需要通知服务端
+        if (this.status === 'online') {
+            this.broadcast<SocketSysMsgSubscribeContent>(SocketSysEvent.socketNotification, {
+                event: SocketSysEvent.socketSub,
+                content: { action, subscribe: true, socketId: this.getSocketId() }
+            });
+        }
+
+        this.subscriptions.add(action);
+        typeof cb === 'function' && this.on(`subscribe:${action}`, cb);
+        return this;
+    }
+
+    /**
+     * 取消订阅
+     *
+     * sub:{action}
+     * @param action
+     * @returns
+     */
+    public unsubscribe(action: string) {
+        // 已经是在线，需要通知服务端
+        if (this.status === 'online') {
+            this.broadcast<SocketSysMsgSubscribeContent>(SocketSysEvent.socketNotification, {
+                event: SocketSysEvent.socketSub,
+                content: { action, subscribe: false, socketId: this.getSocketId() }
+            });
+        }
+        this.subscriptions.delete(action);
+        this.off(`subscribe:${action}`);
+        return this;
+    }
+
+    /**
      * 获取socketId
      * @returns
      */
     public getSocketId(): string {
-        if (this.options.type === 'server') {
+        if (this.options.type === 'server' && this.socket.remotePort) {
             return `${this.socket.remoteFamily || 'IPv4'}://${this.socket.remoteAddress}:${this.socket.remotePort}`;
         }
-        return `${this.socket.localFamily || 'IPv4'}://${this.socket.localAddress}:${this.socket.localPort}`;
+        const addressInfo = this.socket.address() as AddressInfo;
+        if (this.options.type === 'client' && addressInfo.port) {
+            return `${addressInfo.family || 'IPv4'}://${addressInfo.address}:${addressInfo.port}`;
+        }
+        return '';
     }
 
     /**
@@ -352,6 +417,20 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     }
 
     /**
+     * 返回订阅keys
+     */
+    public subscription(): string[] {
+        return Array.from(this.subscriptions.keys());
+    }
+
+    /**
+     * 是否订阅了
+     */
+    public isSubscribe(action: string): boolean {
+        return this.subscriptions.has(action);
+    }
+
+    /**
      * 发送消息
      * @param msg
      * @returns
@@ -382,7 +461,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         };
         // 发送
         if (socketMessage.action && socketMessage.targetId) {
-            this.debug('[send]', '客户端状态', this.status, '消息', msg);
+            this.debug('[send]', '消息', socketMessage);
             this.emit('send', socketMessage);
             this.write(socketMessage);
             return msgId;
@@ -419,16 +498,16 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                     clearTimerEvent();
                     // 回调错误
                     callback(new BaseError(30003, 'Request Timeout'));
-                    this.off(msgId as any, timeoutErrorEvent);
+                    this.off(`request:${msgId}`, timeoutErrorEvent);
                 };
                 // 建立五秒回调限制
-                const eventTimeout = setTimeout(timeoutErrorEvent, this.options.timeout || 5000);
+                const eventTimeout = setTimeout(timeoutErrorEvent, this.options.timeout || 30000);
 
                 // 保存单次请求计时器
                 this.clientRequestTimeoutMap.set(msgId, eventTimeout);
 
                 // 收到回调
-                this.once(msgId as any, (error, ...result) => {
+                this.once(`request:${msgId}`, (error, ...result) => {
                     clearTimerEvent();
                     // 日志
                     this.log('[request-message-receive]', '收到消息回调:', msgId);
@@ -539,7 +618,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             this.clearReuqestTimeoutMap();
 
             // 关闭触发，重连机制
-            this.autoRetryConnect();
+            hadError && this.autoRetryConnect();
         });
 
         /**
@@ -561,9 +640,6 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             this.emit('end', this.socket);
             // 清理
             this.clearReuqestTimeoutMap();
-
-            // 关闭触发，重连机制
-            this.autoRetryConnect();
         });
     }
 

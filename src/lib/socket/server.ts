@@ -1,7 +1,7 @@
 import serverBindMiddleware from '@/middlewares/server-bind';
 import serverSysMsgMiddleware from '@/middlewares/server-sys';
 import { SocketMessage, SocketMessageType, SocketSysMsgOnlineOrOfflineContent, SocketSysEvent, SocketBroadcastMsgContent, SocketBroadcastMsg } from '@/typings/message';
-import { ClientMiddleware, ServerSocketEvent, ServerSocketOptions, SocketResponseAction, SocketType } from '@/typings/socket';
+import { ClientMiddleware, ServerSocketEvent, ServerSocketOptions, SocketCallback, SocketResponseAction, SocketType } from '@/typings/socket';
 import net, { Server, Socket } from 'net';
 import Context from '../context';
 import Emitter from '../emitter';
@@ -51,6 +51,9 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
     // 配置
     private options: ServerSocketOptions = { port: 31000, serverId: 'Server' };
+
+    // 记录订阅的key
+    private subscriptions: Set<string> = new Set();
 
     // 构造函数
     constructor(options: ServerSocketOptions) {
@@ -155,7 +158,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     public start() {
         this.log('[start]', '服务端启动');
         this.status = 'pending';
-        this.server.listen(this.options.port);
+        this.server.listen({ port: this.options.port, keepAlive: true, keepAliveInitialDelay: 0, host: '0.0.0.0' });
     }
 
     /**
@@ -182,8 +185,8 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     public broadcast(action, content, filters?) {
         if (this.status === 'running') {
             this.debug('[server-broadcast]', '客户端:', this.clients.size, '消息', action);
-            let message: Partial<SocketBroadcastMsg> | undefined = undefined;
-            let filterFunc: Function | undefined = undefined;
+            let message: Partial<SocketBroadcastMsg> = {};
+            let filterFunc!: (client: ServerClientSocket) => boolean;
             if (typeof action === 'string') {
                 message = {
                     msgId: undefined,
@@ -202,25 +205,85 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
                     filterFunc = content;
                 }
             }
-            if (message) {
-                this.clients.forEach((client, socketId) => {
-                    // 客户端在线
-                    if (client.status === 'online') {
-                        if ((filterFunc && typeof filterFunc === 'function' && filterFunc(client)) || filterFunc === undefined) {
-                            this.debug('[server-broadcast]', '开始推送客户端：', socketId);
-                            client.send<SocketBroadcastMsg>({
-                                msgId: message?.msgId,
-                                action: message?.action || SocketSysEvent.socketNotification,
-                                type: SocketMessageType.broadcast,
-                                content: message?.content
-                            });
-                        }
-                    }
-                });
-            }
+            message = {
+                msgId: message?.msgId,
+                action: message?.action || SocketSysEvent.socketNotification,
+                type: SocketMessageType.broadcast,
+                content: message?.content
+            };
+            this.debug('[server-broadcast]', '开始广播');
+            // 开始群发
+            this.broadcastMsgToClient(message, filterFunc);
             return;
         }
         this.logError('[server-broadcast]', new BaseError(30012, '服务器未启动'));
+    }
+
+    /**
+     * 发布消息
+     * @param action
+     * @param content
+     */
+    public publish<T = any>(action: string, content: T, developerMsg: Error | undefined = undefined) {
+        this.debug('[server-publish]', '发布消息', action);
+        this.broadcastMsgToClient(
+            {
+                action,
+                type: SocketMessageType.subscribe,
+                content: {
+                    content,
+                    developerMsg
+                }
+            },
+            (client) => {
+                // 有订阅的才发送
+                return client.isSubscribe(action);
+            }
+        );
+    }
+
+    /**
+     * 订阅消息
+     *
+     * @param action
+     * @param cb
+     */
+    public subscribe(action: string, cb: SocketCallback) {
+        this.subscriptions.add(action);
+        this.on(`subscribe:${action}`, cb);
+        return this;
+    }
+
+    /**
+     * 取消订阅
+     * @param action
+     * @returns
+     */
+    public unsubscribe(action: string) {
+        this.subscriptions.delete(action);
+        this.off(`subscribe:${action}`);
+        return this;
+    }
+
+    /**
+     * 群发消息客户端
+     * @param message
+     * @param filters
+     */
+    private broadcastMsgToClient(message: Partial<SocketMessage>, filters?: (client: ServerClientSocket) => boolean) {
+        let clients: string[] = [];
+        if (message) {
+            this.clients.forEach((client) => {
+                // 客户端在线
+                if (client.status === 'online') {
+                    if ((filters && typeof filters === 'function' && filters(client)) || filters === undefined) {
+                        clients.push(client.clientId);
+                        client.send<SocketBroadcastMsg>(message);
+                    }
+                }
+            });
+        }
+        return clients;
     }
 
     /**
@@ -384,6 +447,23 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
             this.emit('error', e);
         });
 
+        // 收到订阅消息
+        client.on('subscribe', (message) => {
+            // 服务端订阅了
+            if (this.subscriptions.has(message.action)) {
+                // 触发回调
+                this.emit(`subscribe:${message.action}`, message.content.developerMsg, message.content.content);
+                // 订阅回调
+                this.emit('subscribe', message);
+            }
+            // 有订阅的才发送
+            const subscribeClients = this.broadcastMsgToClient(message, (client) => {
+                return client.isSubscribe(message.action);
+            });
+
+            this.debug('[client-subscribe]', '订阅事件', message.action, '客户端', subscribeClients);
+        });
+
         // 下线通知
         client.on('offline', () => {
             this.debug('[client-offline]', client.targetId);
@@ -426,7 +506,8 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     private handleClientRequestEvent(): ClientMiddleware {
         return async (ctx: Context, next) => {
             const message: SocketMessage = ctx.toJson();
-            if (message && typeof message === 'object' && message.action && message.type === 'request' && message.targetId === ctx.id && message.msgId) {
+            // 请求消息
+            if (message && typeof message === 'object' && message.action && message.targetId === ctx.id && message.msgId && message.type === 'request') {
                 this.debug('[request-received]', '来自客户端的请求:', message);
                 if (this.responseAction.has(message.action)) {
                     // 注册方法

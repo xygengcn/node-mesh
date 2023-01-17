@@ -27,9 +27,19 @@ export enum SocketType {
 export type ClientSocketStatus = 'none' | 'pending' | 'binding' | 'online' | 'error' | 'retrying' | 'offline';
 
 /**
+ * 回调函数
+ */
+export type SocketCallback = (error?: Error | null, content?: any) => void;
+
+/**
+ * socket的消息回调事件
+ */
+export type SocketMessageEvent = { [key in `${'request' | 'subscribe'}:${string}`]: SocketCallback };
+
+/**
  * 原生socket事件
  */
-export interface NetSocketEvent {
+export interface NetSocketEvent extends SocketMessageEvent {
     error: (e: Error) => void; // 错误
     close: (socket: Socket) => void; // 关闭 在end事件触发之后触发
     end: (socket: Socket) => void; // 结束 比close先执行
@@ -40,7 +50,7 @@ export interface NetSocketEvent {
 /**
  * 原生Server事件
  */
-export interface NetServerEvent {
+export interface NetServerEvent extends SocketMessageEvent {
     error: (e: Error) => void; // server error
     close: (server: Server) => void; // server close
     connect: (socket: Socket) => void; // 客户端连接
@@ -62,6 +72,7 @@ export interface ClientSocketEvent extends NetSocketEvent {
     offline: (socket: Socket) => void; // 自己下线成功
     reconnect: (socket: Socket) => void; // 开始重连
     disconnect: (socket: Socket) => void; // 开始重连
+    subscribe: (message: SocketMessage) => void; // 收到订阅的消息了
 }
 
 /**
@@ -72,6 +83,7 @@ export interface ServerSocketEvent extends NetServerEvent {
     message: (message: SocketMessage, client: ClientSocket) => void; // // client send message
     sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
     broadcast: (content: SocketBroadcastMsgContent) => void; // 收到广播消息
+    subscribe: (message: SocketMessage) => void; // 收到订阅的消息了
 }
 
 /**
@@ -85,7 +97,7 @@ export interface ClientSocketOptions {
     host: string; // 地址 default：0.0.0.0
     retry?: boolean; // 是否重连 default：true
     retryDelay?: number; // 是否重连 default：3000
-    timeout?: number; // 请求超时 default: 5000
+    timeout?: number; // 请求超时 default: 30000
     type?: SocketType; // 用来判断操作端是客户端还是服务端
 }
 
@@ -100,6 +112,7 @@ export interface ClientSocketBindOptions {
     port: number; // 目标端口
     status: SocketBindStatus; // 绑定状态
     responseActions: string[]; // 注册的动作
+    subscription: string[]; // 注册的动作
 }
 
 /**
@@ -121,7 +134,7 @@ export interface ServerSocketOptions {
 /**
  * 注册动作函数
  */
-export type SocketResponseAction<T extends any = any> = (params: any) => T;
+export type SocketResponseAction<T extends any = any> = (content: any) => T;
 
 /**
  * 中间件

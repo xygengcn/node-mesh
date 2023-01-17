@@ -42,8 +42,13 @@ export default function serverBindMiddleware(server: ServerSocket): ClientMiddle
                 if (bind.serverId === server.serverId) {
                     // 校验密钥
                     if (server.checkSecret(bind.secret)) {
+                        // log
+                        server.success('[server-bind]', '绑定客户度端成功:', bind.clientId, '注册方法', bind.responseActions.length, '订阅', bind.subscription.length);
+
+                        // 状态在线
+                        ctx.client.status = 'online';
                         // 绑定成功
-                        const responseActions = new Set(bind.responseActions || []);
+                        const responseActions = bind.responseActions || [];
 
                         // 开始注册动作
                         responseActions.forEach((actionKey) => {
@@ -63,10 +68,11 @@ export default function serverBindMiddleware(server: ServerSocket): ClientMiddle
                             server.responseAction.set(actionKey, { type: SocketType.client, socketId });
                         });
 
-                        // 状态在线
-                        ctx.client.status = 'online';
-                        // log
-                        server.success('[server-bind]', '绑定客户度端成功:', bind.clientId);
+                        // 处理订阅数据
+                        bind.subscription.forEach((key) => {
+                            // 添加订阅
+                            client.subscribe(key);
+                        });
 
                         // 回传消息
                         ctx.json<SocketSysMsgContent<ServerSocketBindResult>>({

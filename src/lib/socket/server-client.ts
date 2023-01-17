@@ -7,7 +7,7 @@ import ClientSocket from './client';
  */
 export default class ServerClientSocket extends ClientSocket {
     /**
-     * 客户度端keys
+     * 客户度端 注册函数keys
      */
     public readonly responseActionKeys: Set<string> = new Set();
 
