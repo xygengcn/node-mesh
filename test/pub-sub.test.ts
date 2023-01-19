@@ -14,7 +14,7 @@ server.on('error', (error) => {
 
 describe('客户端和服务端的发布订阅测试', () => {
     after(() => {
-        server.stop();
+        server.disconnect();
     });
 
     describe('订阅与发布', () => {

@@ -18,6 +18,15 @@ export function uuid(length?: number): string {
 }
 
 /**
+ * 消息id
+ * @param clientId
+ * @returns
+ */
+export function msgUUID(id: string) {
+    return `${id}-${new Date().getTime()}-${uuid()}`;
+}
+
+/**
  * 字符串解析
  * @param str
  * @returns
@@ -99,10 +108,8 @@ export function compose(middlewares: Array<Function>) {
  * 解析消息体
  * @returns
  */
-export function parseMessage(data: Buffer | unknown): SocketMessage | undefined {
+export function parseMessage(data: Buffer | unknown): SocketMessage[] {
     const messages = data && new Message(data);
-    const message: SocketMessage = messages?.args?.[0];
-    if (typeof message === 'object' && message.msgId) {
-        return message;
-    }
+    const msgs: SocketMessage[] = messages?.args;
+    return msgs.filter((msg) => typeof msg === 'object' && msg.msgId);
 }

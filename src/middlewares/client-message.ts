@@ -62,7 +62,7 @@ export function clientMessageMiddleware(): ClientMiddleware {
                     if (event && typeof event === 'function') {
                         try {
                             // 运行注册函数
-                            content = await event(message.content?.content || {});
+                            content = await event.apply(undefined, message.content?.content || []);
                         } catch (e: any) {
                             developerMsg = e;
                         }

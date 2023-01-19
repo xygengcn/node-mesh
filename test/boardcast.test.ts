@@ -14,7 +14,7 @@ server.on('error', (error) => {
 
 describe('广播测试', () => {
     after(() => {
-        server.stop();
+        server.disconnect();
         client1.disconnect();
         client2.disconnect();
         client3.disconnect();

@@ -19,7 +19,7 @@ const client = new ClientSocket({ port: 3006, host: '0.0.0.0', clientId: 'client
 describe('插件测试', () => {
     after(() => {
         client.disconnect();
-        server.stop();
+        server.disconnect();
     });
 
     describe('测试执行顺序问题', () => {

@@ -12,7 +12,7 @@ describe('客户端上线离线，其他端收到通知', () => {
         });
     });
     after(() => {
-        server.stop();
+        server.disconnect();
     });
 
     describe('客户端上线，并离线，服务端收到通知', () => {

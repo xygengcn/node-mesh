@@ -6,8 +6,8 @@ const server = new ServerSocket({ port: 3008, serverId: 'server1' });
 const client1 = new ClientSocket({ port: 3008, host: '0.0.0.0', clientId: 'client1', targetId: 'server1' });
 const client2 = new ClientSocket({ port: 3008, host: '0.0.0.0', clientId: 'client2', targetId: 'server1' });
 
-client1.response('action/test', (content) => {
-    return content + 1;
+client1.response('action/test', (a, b) => {
+    return a + b;
 });
 
 server.start();
@@ -20,7 +20,7 @@ describe('客户端请求客户端测试', () => {
     after(() => {
         client1.disconnect();
         client2.disconnect();
-        server.stop();
+        server.disconnect();
     });
 
     describe('单向请求', () => {
@@ -30,14 +30,15 @@ describe('客户端请求客户端测试', () => {
                 if (syscontent.event === 'socket:online') {
                     index++;
                     if (index === 2) {
-                        client2.request('action/test', 1, (error, data) => {
-                            if (error) {
-                                assert.fail(error);
-                            } else {
-                                assert.equal(data, 2);
+                        client2
+                            .request('action/test', 1, 1)
+                            .then((result) => {
+                                assert.equal(result, 2);
                                 done();
-                            }
-                        });
+                            })
+                            .catch((e) => {
+                                assert.fail(e);
+                            });
                     }
                 }
             });

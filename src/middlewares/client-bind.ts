@@ -32,7 +32,8 @@ export function clientSocketBindMiddleware(secret: string | undefined): ClientMi
                 host: addressInfo.address,
                 secret: secret,
                 subscription: ctx.client.subscription() || [],
-                responseActions: ctx.client.responseKeys()
+                responseActions: ctx.client.responseKeys(),
+                socketId: ctx.client.getSocketId()
             },
             event: SocketSysEvent.socketBind
         };
@@ -47,35 +48,42 @@ export function clientSocketBindMiddleware(secret: string | undefined): ClientMi
         if (ctx.client.status === 'binding') {
             // 发送绑定事件到客户端
             ctx.client.emit('beforeBind', sysMsgContent.content, ctx.socket);
-            ctx.client.request(SocketSysEvent.socketBind, sysMsgContent, (error, result: SocketSysMsgContent<ServerSocketBindResult>) => {
-                // 日志.
-                ctx.debug('[afterBind]', result, error);
-                // 收到回调
-                ctx.client.emit('afterBind', result.content, ctx.socket);
+            ctx.client
+                .request(SocketSysEvent.socketBind, sysMsgContent)
+                .then((result: SocketSysMsgContent<ServerSocketBindResult>) => {
+                    // 日志.
+                    ctx.debug('[afterBind]', result);
+                    // 收到回调
+                    ctx.client.emit('afterBind', result.content, ctx.socket);
 
-                // 存在的错误，绑定失败
-                if (error || result.content.status !== SocketBindStatus.success) {
-                    ctx.logError('[bind:error] ', new BaseError(30009, error || 'Client bind error'));
-                    ctx.client.disconnect(error || new BaseError(30009, error || 'Client bind error'));
-                    return;
-                }
+                    // 存在的错误，绑定失败
+                    if (result.content.status !== SocketBindStatus.success) {
+                        ctx.logError('[bind:error] ', new BaseError(30009, 'Client bind error'));
+                        ctx.client.disconnect(new BaseError(30009, 'Client bind error'));
+                        return;
+                    }
 
-                // 成功登录
-                ctx.client.status = 'online';
-                ctx.success('[online]', ctx.id);
+                    // 成功登录
+                    ctx.client.status = 'online';
+                    ctx.success('[online]', ctx.id);
 
-                // 通知服务端上线了
-                ctx.log('[online]', '通知服务端，客户端绑定成功');
+                    // 通知服务端上线了
+                    ctx.log('[online]', '通知服务端，客户端绑定成功');
 
-                // 发送消息
-                ctx.broadcast<SocketSysMsgOnlineOrOfflineContent>(SocketSysEvent.socketNotification, {
-                    event: SocketSysEvent.socketOnline,
-                    content: { clientId: ctx.id, serverId: ctx.client.targetId, socketId: ctx.client.getSocketId() }
+                    // 发送消息
+                    ctx.broadcast<SocketSysMsgOnlineOrOfflineContent>(SocketSysEvent.socketNotification, {
+                        event: SocketSysEvent.socketOnline,
+                        content: { clientId: ctx.id, serverId: ctx.client.targetId, socketId: ctx.client.getSocketId() }
+                    });
+
+                    // 上线了
+                    ctx.client.emit('online', ctx.socket);
+                })
+                .catch((e) => {
+                    ctx.logError('[bind:error] ', new BaseError(30009, e));
+                    ctx.client.emit('error', e);
+                    ctx.client.disconnect(new BaseError(30009, e));
                 });
-
-                // 上线了
-                ctx.client.emit('online', ctx.socket);
-            });
         }
         next();
     };

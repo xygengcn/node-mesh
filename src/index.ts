@@ -1,4 +1,8 @@
-export * from './lib/socket/client';
-export * from './lib/socket/server';
-export { default as ClientSocket } from './lib/socket/client';
-export { default as ServerSocket } from './lib/socket/server';
+import ClientSocket from './lib/socket/client';
+import ServerSocket from './lib/socket/server';
+import Branch from './lib/node/branch';
+import Master from './lib/node/master';
+
+export * from './typings/index';
+
+export { ClientSocket, ServerSocket, Branch, Master };

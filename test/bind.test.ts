@@ -6,15 +6,13 @@ const server = new ServerSocket({ port: 3000, serverId: 'server1' });
 
 server.start();
 
-server.on('error', (error) => {
-    console.log('[server-error]', error);
-});
+server.on('error', (error) => {});
 
 let index = 0;
 
 describe('客户端和服务端的绑定测试', () => {
     after(() => {
-        server.stop();
+        server.disconnect();
     });
 
     describe('测试客户端和服务端 正常情况', () => {
@@ -58,6 +56,7 @@ describe('客户端和服务端的绑定测试', () => {
             client.once('error', () => {
                 client.disconnect();
                 client.off();
+                done();
             });
             client.once('afterBind', (result) => {
                 assert.equal(result.status, 2);

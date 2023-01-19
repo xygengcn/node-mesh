@@ -10,13 +10,13 @@ server.on('error', (error) => {
 });
 
 // 服务端注册
-server.response('action/test', () => {
-    return 'server1';
+server.response('action/test', (a, b) => {
+    return a + b + 'server1';
 });
 
 describe('服务端请求客户端测试', () => {
     after(() => {
-        server.stop();
+        server.disconnect();
     });
 
     describe('单向发送', () => {
@@ -31,8 +31,8 @@ describe('服务端请求客户端测试', () => {
             client.connect();
             client.on('online', () => {
                 // 服务端请求
-                server.request('action/test', 'hello').then((result) => {
-                    assert.equal(result, 'server1');
+                server.request('action/test', 'hello', 'world').then((result) => {
+                    assert.equal(result, 'helloworldserver1');
                     client.disconnect();
                     done();
                 });
@@ -41,15 +41,16 @@ describe('服务端请求客户端测试', () => {
         it('客户端注册，服务端请求，客户端返回', (done) => {
             const client = new ClientSocket({ port: 3004, host: '0.0.0.0', clientId: 'client2', targetId: 'server1' });
             // 客户端注册
-            client.response('client/response', (params) => {
-                assert.equal(params, 'hello');
+            client.response('client/response', (a, b) => {
+                assert.equal(a, 'hello');
+                assert.equal(b, 'client2');
                 return 'client2';
             });
             client.connect();
             client.on('online', () => {
                 // 服务端请求
                 server
-                    .request('client/response', 'hello')
+                    .request('client/response', 'hello', 'client2')
                     .then((result) => {
                         assert.equal(result, 'client2');
                         client.disconnect();

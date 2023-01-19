@@ -1,9 +1,10 @@
 import { clientSocketBindMiddleware } from '@/middlewares/client-bind';
 import { clientMessageMiddleware } from '@/middlewares/client-message';
 import clientSysMsgMiddleware from '@/middlewares/client-sys';
+import { NotFunction } from '@/typings';
 import { SocketBroadcastMsg, SocketBroadcastMsgContent, SocketMessage, SocketMessageType, SocketSysEvent, SocketSysMsgSubscribeContent } from '@/typings/message';
 import { ClientMiddleware, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketCallback, SocketResponseAction, SocketType } from '@/typings/socket';
-import { compose, parseError, stringifyError, uuid } from '@/utils';
+import { compose, msgUUID, parseError, parseMessage, stringifyError } from '@/utils';
 import { Stream } from 'amp';
 import Message from 'amp-message';
 import { Socket, AddressInfo } from 'net';
@@ -63,6 +64,9 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
     // 中间件
     private middlewares: Map<string, { middlewares: ClientMiddleware[]; plugin: (_this: Context) => Promise<void> }> = new Map();
+
+    // 消息缓存
+    private messageCacheQueue: Array<SocketMessage> = [];
 
     // 构造
     constructor(options: ClientSocketOptions, socket?: Socket) {
@@ -148,7 +152,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
         // 链接事件
         this.socket.once('connect', () => {
-            this.debug('[connect]', '连接到服务端', this.socket.address(), 'socketId', this.getSocketId());
+            this.debug('[connect]', '连接到服务端，socketId', this.getSocketId());
             // 解除手动限制，手动断开后手动连接后的自动重连
             this.isManualClose = false;
 
@@ -169,7 +173,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     public reconnect(options?: Partial<ClientSocketOptions>): void {
         // 更新配置
         if (options && typeof options === 'object') {
-            Object.assign(this.options, options);
+            this.configure(options);
         }
         this.debug('[reconnect]', '准备重连', 'status:', this.status, 'isManualClose:', this.isManualClose);
         if (this.status === 'error' || this.status === 'offline') {
@@ -198,11 +202,8 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      *
      * @param action
      * @param params
-     * @param callback
      */
-    public request<T extends any = any>(action: string, params: string | number | object, callback: (error: Error | null, result: T) => void): void;
-    public request<T = any>(action: string, params: string | number | object): Promise<T>;
-    public async request(action, params, callback?): Promise<any> {
+    public request<T = any, K = any>(action: string, ...params: Array<NotFunction<K>>): Promise<T> {
         // 日志
         this.log('[request-send]', '客户端请求，action:', action);
 
@@ -214,57 +215,35 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
         if (this.responseAction.has(action)) {
             const responseAction: SocketResponseAction = this.getResponse(action) as SocketResponseAction;
-            if (typeof callback === 'function') {
-                let developerMsg: Error | null = null;
-                let result = null;
+            return new Promise(async (resolve, reject) => {
                 try {
-                    result = await responseAction(params || {});
-                } catch (error: any) {
-                    developerMsg = error;
+                    const result = await responseAction.apply(undefined, params || []);
+                    resolve(result);
+                } catch (error) {
+                    reject(error);
                 }
-                callback(developerMsg, result);
-                return;
-            } else {
-                return new Promise(async (resolve, reject) => {
-                    try {
-                        const result = await responseAction(params || {});
-                        resolve(result);
-                    } catch (error) {
-                        reject(error);
-                    }
-                });
-            }
+            });
         }
 
-        // 正常情况,没有callback返回promise
-        // 只有在线或者系统消息才能发出去
-        if (this.socket && (this.status === 'online' || /^socket:.+$/i.test(action))) {
-            if (typeof callback === 'function') {
-                this.requestMessage(action, params, callback);
-                return;
-            } else {
-                return new Promise((resolve, reject) => {
-                    this.requestMessage(action, params, (error, result) => {
-                        if (error) {
-                            reject(error);
-                        } else {
-                            resolve(result);
-                        }
-                    });
+        // 请求服务端
+        if (this.socket) {
+            return new Promise((resolve, reject) => {
+                this.requestMessage(action, params, (error, result) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        resolve(result);
+                    }
                 });
-            }
+            });
         }
 
         // 错误处理
-        this.logError('[request]', new BaseError(30013, '客户端请求失败', { action, params, status: this.status }));
+        this.logError('[request]', new BaseError(30002, '客户端请求失败', { action, params, status: this.status }));
 
         // 返回失败
         this.emit('error', new BaseError(30002, "Socket isn't connect !"));
-        if (typeof callback === 'function') {
-            callback(new BaseError(30002, "Socket isn't connect !"));
-        } else {
-            return Promise.reject(new BaseError(30002, "Socket isn't connect !"));
-        }
+        return Promise.reject(new BaseError(30002, "Socket isn't connect !"));
     }
 
     /**
@@ -292,7 +271,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                 content
             }
         });
-        this.debug('[broadcast-send] 广播消息Id', msgId);
+        this.debug('[broadcast-send]', msgId);
         return msgId;
     }
 
@@ -301,8 +280,8 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @param action
      * @param content
      */
-    public publish<T = any>(action: string, content: T, developerMsg: Error | undefined = undefined) {
-        return this.send({
+    public publish<T = any>(action: string, content: T, developerMsg?: Error | undefined) {
+        const msgId = this.send({
             action,
             type: SocketMessageType.subscribe,
             content: {
@@ -310,6 +289,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                 developerMsg
             }
         });
+        this.debug('[client-publish]', msgId);
     }
 
     /**
@@ -331,7 +311,6 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
         this.subscriptions.add(action);
         typeof cb === 'function' && this.on(`subscribe:${action}`, cb);
-        return this;
     }
 
     /**
@@ -351,7 +330,6 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         }
         this.subscriptions.delete(action);
         this.off(`subscribe:${action}`);
-        return this;
     }
 
     /**
@@ -461,9 +439,17 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         };
         // 发送
         if (socketMessage.action && socketMessage.targetId) {
-            this.debug('[send]', '消息', socketMessage);
-            this.emit('send', socketMessage);
-            this.write(socketMessage);
+            // 只有在线或者系统消息才能直接发出去
+            if (this.status === 'online' || /^socket:.+$/i.test(socketMessage.action)) {
+                // 插入缓存
+                this.debug('[send]', '消息', socketMessage);
+                this.emit('send', socketMessage);
+                this.write(socketMessage);
+            } else {
+                // 插入队列
+                this.messageCacheQueue.push(socketMessage);
+                this.debug('[send-cache]', '消息', socketMessage.msgId);
+            }
             return msgId;
         } else {
             // action 和 targetId 是必要的
@@ -476,7 +462,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 封装发送消息
      * @param args
      */
-    private requestMessage(action: string, content: string | number | object, callback: (error: Error | null, ...result: any[]) => void) {
+    private requestMessage<T = any>(action: string, content: Array<NotFunction<T>>, callback: (error: Error | null, ...result: any[]) => void) {
         if (this.socket) {
             // 生成唯一id
             const msgId = this.msgId();
@@ -518,7 +504,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             }
 
             // 发送
-            this.send({
+            this.send<SocketMessage<Array<NotFunction<any>>>>({
                 content: {
                     content
                 },
@@ -533,7 +519,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @returns
      */
     private msgId(): string {
-        return `${this.clientId}-${this.options.targetId}-${new Date().getTime()}-${uuid()}`;
+        return msgUUID(this.clientId);
     }
 
     /**
@@ -547,25 +533,46 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         this.emit(hook as any, ...(args as any));
         const plugin = this.middlewares.get(hook);
         if (plugin?.plugin) {
-            const ctx = new Context(args[0], this);
+            const ctx = new Context(args[0] instanceof Buffer ? args[0] : undefined, args[1], this);
             return plugin.plugin.call(this, ctx);
         }
         return Promise.resolve();
     }
 
     /**
-     * 发送消息
+     * 发送消息队列
+     *
+     * 1、请求的时候
+     *
+     * 2、登录后
      * @param args
      */
-    private write(msg: SocketMessage): void {
-        const message = new Message([msg]);
+    private sendMessageQueue(): void {
+        if (this.messageCacheQueue.length <= 0) return;
+        this.write(...this.messageCacheQueue);
+        this.messageCacheQueue = [];
+    }
+
+    /**
+     * 发送消息队列
+     *
+     * 1、请求的时候
+     *
+     * 2、登录后
+     * @param args
+     */
+    private write(...msgs: SocketMessage[]): void {
+        if (msgs.length <= 0) return;
+        const msgIds = msgs.map((msg) => msg.msgId);
+        const message = new Message(msgs);
+        this.log('[write]', '开始消息队列', msgIds);
         this.socket.write(message.toBuffer(), (e) => {
             if (e) {
                 this.logError('[write]', new BaseError(30004, e));
                 this.emit('error', new BaseError(30004, e));
                 return;
             }
-            this.log('[write]', '消息', msg.msgId);
+            this.success('[write]', '消息队列发送成功', msgIds);
         });
     }
 
@@ -581,12 +588,11 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         // 接收来自服务端的信息
         const stream = new Stream();
         this.socket.pipe(stream);
-        stream.on('data', (buf) => {
-            // 日志
-            this.debug('[data]', '收到消息');
-
-            // data hook
-            this.useHook('data', buf, this);
+        stream.on('data', (buf: Buffer) => {
+            const messages = parseMessage(buf);
+            messages.forEach((mesage) => {
+                this.useHook('data', buf, mesage);
+            });
         });
 
         // 有错误发生调用的事件
@@ -640,6 +646,13 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             this.emit('end', this.socket);
             // 清理
             this.clearReuqestTimeoutMap();
+        });
+
+        /**
+         * 登录成功后要把缓存的消息发出去
+         */
+        this.once('online', () => {
+            this.sendMessageQueue();
         });
     }
 

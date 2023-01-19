@@ -24,7 +24,7 @@ export default class Context {
     /**
      * 消息
      */
-    public message: SocketMessage;
+    private message: SocketMessage;
 
     /**
      * 日志
@@ -34,12 +34,12 @@ export default class Context {
     public logError: Emitter['logError'];
     public success: Emitter['success'];
 
-    constructor(data: Buffer | unknown, client: ClientSocket) {
+    constructor(data: Buffer | undefined, message: SocketMessage, client: ClientSocket) {
         this.id = client.clientId;
         this.client = client;
         this.body = data;
         this.socket = client.socket;
-        this.message = this.toJson();
+        this.message = message;
         this.log = client.log.bind(client);
         this.debug = client.debug.bind(client);
         this.logError = client.logError.bind(client);
@@ -54,7 +54,8 @@ export default class Context {
         if (this.message && !body) {
             return this.message;
         }
-        return parseMessage(body || this.body) as SocketMessage;
+        const messages = parseMessage(body || this.body);
+        return messages[0];
     }
 
     /**

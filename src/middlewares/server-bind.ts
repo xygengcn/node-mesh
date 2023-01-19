@@ -16,25 +16,25 @@ export default function serverBindMiddleware(server: ServerSocket): ClientMiddle
             const message: SocketMessage = ctx.toJson();
             // 客户端来绑定
             if (message && typeof message === 'object' && message?.action && message?.msgId && message.action === SocketSysEvent.socketBind && message.type === 'request') {
-                const sysMessageContent: SocketSysMsgContent<ClientSocketBindOptions> = message.content?.content || {};
+                const sysMessageContent: SocketSysMsgContent<ClientSocketBindOptions> = message.content?.content[0] || {};
 
                 // 绑定数据
                 const bind: ClientSocketBindOptions = sysMessageContent.content;
 
                 // 绑定目标id
-                ctx.client.configure({ targetId: bind.clientId });
 
                 // 生成socketId
-                const socketId = ctx.client.getSocketId();
+                const socketId = bind.socketId;
 
                 // 获取客户端
                 const client = server.clients.get(socketId);
-                if (client) {
-                    client.clearBindSetTimeout();
-                } else {
+                if (!client) {
                     server.logError('[server-bind]', new BaseError(30009, new Error(socketId + '客户端不存在')));
                     return;
                 }
+
+                client.clearBindSetTimeout();
+                client.configure({ targetId: bind.clientId });
 
                 server.debug('[server-bind]', ' 收到客户端绑定信息', 'socketId:', socketId, 'requestId:', message.msgId);
 
@@ -46,7 +46,7 @@ export default function serverBindMiddleware(server: ServerSocket): ClientMiddle
                         server.success('[server-bind]', '绑定客户度端成功:', bind.clientId, '注册方法', bind.responseActions.length, '订阅', bind.subscription.length);
 
                         // 状态在线
-                        ctx.client.status = 'online';
+                        client.status = 'online';
                         // 绑定成功
                         const responseActions = bind.responseActions || [];
 
@@ -73,6 +73,9 @@ export default function serverBindMiddleware(server: ServerSocket): ClientMiddle
                             // 添加订阅
                             client.subscribe(key);
                         });
+
+                        // 客户端上线
+                        client.emit('online', client.socket);
 
                         // 回传消息
                         ctx.json<SocketSysMsgContent<ServerSocketBindResult>>({

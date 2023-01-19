@@ -20,24 +20,10 @@ server.response('action/client-error', () => {
 
 describe('客户端和服务端的发消息错误测试', () => {
     after(() => {
-        server.stop();
+        server.disconnect();
     });
 
     describe('客户端错误自己返回测试', () => {
-        it('客户端request，自己response, 测试callback', (done) => {
-            const client = new ClientSocket({ port: 3003, host: '0.0.0.0', clientId: 'test-server-response-callback', targetId: 'server1' });
-            client.response('action/client-error', () => {
-                return Promise.reject(Error('测试数据'));
-            });
-            client.connect();
-            client.on('online', () => {
-                client.request('action/client-error', {}, (error, body) => {
-                    assert.equal(error instanceof Error, true);
-                    client.disconnect();
-                    done();
-                });
-            });
-        });
         it('客户端request，自己response, 测试promise', (done) => {
             const client = new ClientSocket({ port: 3003, host: '0.0.0.0', clientId: 'test-server-response-promise', targetId: 'server1' });
             client.response('action/client-error', () => {
@@ -55,17 +41,6 @@ describe('客户端和服务端的发消息错误测试', () => {
     });
 
     describe('服务端错误返回测试', () => {
-        it('客户端request，服务端response, 测试callback', (done) => {
-            const client = new ClientSocket({ port: 3003, host: '0.0.0.0', clientId: 'test-server-response-callback', targetId: 'server1' });
-            client.connect();
-            client.on('online', () => {
-                client.request('action/error', {}, (error, body) => {
-                    assert.equal(error instanceof Error, true);
-                    client.disconnect();
-                    done();
-                });
-            });
-        });
         it('客户端request，服务端response, 测试promise', (done) => {
             const client = new ClientSocket({ port: 3003, host: '0.0.0.0', clientId: 'test-server-response-promise', targetId: 'server1' });
             client.connect();

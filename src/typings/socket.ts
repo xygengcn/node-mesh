@@ -27,6 +27,11 @@ export enum SocketType {
 export type ClientSocketStatus = 'none' | 'pending' | 'binding' | 'online' | 'error' | 'retrying' | 'offline';
 
 /**
+ * 服务端状态
+ */
+export type ServerSocketStatus = 'none' | 'waiting' | 'pending' | 'online' | 'error' | 'offline';
+
+/**
  * 回调函数
  */
 export type SocketCallback = (error?: Error | null, content?: any) => void;
@@ -44,7 +49,7 @@ export interface NetSocketEvent extends SocketMessageEvent {
     close: (socket: Socket) => void; // 关闭 在end事件触发之后触发
     end: (socket: Socket) => void; // 结束 比close先执行
     connect: (socket: Socket) => void; // 请求成功
-    data: (buf: Buffer, client: ClientSocket) => void; // socket传送数据
+    data: (buf: Buffer, message: SocketMessage) => void; // socket传送数据
 }
 
 /**
@@ -64,14 +69,15 @@ export interface NetServerEvent extends SocketMessageEvent {
 export interface ClientSocketEvent extends NetSocketEvent {
     beforeBind: (content: ClientSocketBindOptions, socket: Socket) => void; // 开始绑定，还没发送bind:callback
     afterBind: (content: ServerSocketBindResult, socket: Socket) => void; // 绑定回调
-    send: (content: any) => void; // 回调发出消息
-    message: (message: SocketMessage) => void; // 收到规范的消息了
-    sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
-    broadcast: (content: SocketBroadcastMsgContent) => void; // 收到广播消息
-    online: (socket: Socket) => void; // 自己上线成功
     offline: (socket: Socket) => void; // 自己下线成功
     reconnect: (socket: Socket) => void; // 开始重连
+
     disconnect: (socket: Socket) => void; // 开始重连
+    send: (message: SocketMessage) => void; // 发出消息
+    online: (socket: Socket) => void; // 自己上线成功
+    broadcast: (content: SocketBroadcastMsgContent) => void; // 收到广播消息
+    message: (message: SocketMessage) => void; // 收到规范的消息了
+    sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
     subscribe: (message: SocketMessage) => void; // 收到订阅的消息了
 }
 
@@ -79,7 +85,9 @@ export interface ClientSocketEvent extends NetSocketEvent {
  * 服务端事件
  */
 export interface ServerSocketEvent extends NetServerEvent {
+    send: (message: SocketMessage) => void; // 发出消息
     online: (socket: Server) => void; // 自己上线成功
+    disconnect: (socket: Server) => void; // 开始重连
     message: (message: SocketMessage, client: ClientSocket) => void; // // client send message
     sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
     broadcast: (content: SocketBroadcastMsgContent) => void; // 收到广播消息
@@ -113,6 +121,7 @@ export interface ClientSocketBindOptions {
     status: SocketBindStatus; // 绑定状态
     responseActions: string[]; // 注册的动作
     subscription: string[]; // 注册的动作
+    socketId: string; // socket 唯一值
 }
 
 /**
@@ -129,12 +138,13 @@ export interface ServerSocketOptions {
     serverId: string; // 名称
     secret?: string; // 密钥
     port: number; // 端口 default：31000
+    timeout?: number; // 请求延迟
 }
 
 /**
  * 注册动作函数
  */
-export type SocketResponseAction<T extends any = any> = (content: any) => T;
+export type SocketResponseAction<T extends any = any> = ((...content: any) => T) | ((...content: any) => Promise<T>);
 
 /**
  * 中间件
