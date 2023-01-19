@@ -1,3 +1,4 @@
+import { SocketType } from '@/typings';
 import { NodeAction } from '@/typings/node';
 import Node from '..';
 import ClientSocket from '../../socket/client';
@@ -13,7 +14,7 @@ interface BranchOptions {
     timeout?: number; // 请求超时 default: 5000
 }
 
-export default class Branch<T extends NodeAction = NodeAction> extends Node<T> {
+export default class Branch<T extends NodeAction = NodeAction> extends Node<T, SocketType.client> {
     // 构建分支
     constructor(id: string, options: BranchOptions) {
         super();

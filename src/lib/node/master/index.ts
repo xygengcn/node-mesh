@@ -1,4 +1,5 @@
 import ServerSocket from '@/lib/socket/server';
+import { SocketType } from '@/typings';
 import { NodeAction } from '@/typings/node';
 import Node from '..';
 
@@ -8,7 +9,7 @@ interface MasterOptions {
     port: number; // 端口 default：31000
 }
 
-export default class Master<T extends NodeAction = NodeAction> extends Node<T> {
+export default class Master<T extends NodeAction = NodeAction> extends Node<T, SocketType.server> {
     // 构建干支
     constructor(id: string, options: MasterOptions) {
         super();
