@@ -1,5 +1,5 @@
 {
-    "name": "node-octopus",
+    "name": "node-mesh",
     "version": "1.0.0",
     "description": "Master - Branch 形式 Nodejs 微服务框架",
     "types": "dist/index.d.ts",
@@ -13,10 +13,10 @@
         "test:dev": "env-cmd -r .env.js -e development mocha test/**.test.ts",
         "pref": "env-cmd -r .env.js -e test mocha test/pref.test.ts"
     },
-    "homepage": "https://github.com/xygengcn/node-octopus",
+    "homepage": "https://github.com/xygengcn/node-mesh",
     "repository": {
         "type": "git",
-        "url": "https://github.com/xygengcn/node-octopus.git"
+        "url": "https://github.com/xygengcn/node-mesh.git"
     },
     "keywords": [
         "node",

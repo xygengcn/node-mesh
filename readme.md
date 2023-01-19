@@ -5,7 +5,7 @@
 ### Request - Response
 
 ```ts
-import { Master, Branch } from 'node-octopus';
+import { Master, Branch } from 'node-mesh';
 
 const actions = {
     add: (a: number, b: number): number => {
