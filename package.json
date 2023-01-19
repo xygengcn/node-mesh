@@ -1,7 +1,10 @@
 {
     "name": "node-octopus",
-    "version": "0.0.1",
-    "description": "建立主分支形式Nodejs微服务框架",
+    "version": "1.0.0",
+    "description": "Master - Branch 形式 Nodejs 微服务框架",
+    "types": "dist/index.d.ts",
+    "main": "dist/index.js",
+    "module": "dist/index.esm.js",
     "scripts": {
         "build": "rm -rf ./dist && rollup -c rollup.config.js",
         "server": "env-cmd -r .env.js -e development nodemon examples/server.dev.ts",
@@ -10,13 +13,28 @@
         "test:dev": "env-cmd -r .env.js -e development mocha test/**.test.ts",
         "pref": "env-cmd -r .env.js -e test mocha test/pref.test.ts"
     },
-    "homepage": "https://xygeng.cn",
+    "homepage": "https://github.com/xygengcn/node-octopus",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/xygengcn/node-octopus.git"
+    },
     "keywords": [
-        "nodejs",
-        "typescript"
+        "node",
+        "typescript",
+        "net",
+        "master",
+        "branch",
+        "framework",
+        "microservice",
+        "publish",
+        "request",
+        "subscribe",
+        "micro",
+        "service"
     ],
     "author": "xygengcn",
-    "license": "ISC",
+    "mail": "xygengcn@qq.com",
+    "license": "MIT",
     "devDependencies": {
         "@types/mocha": "^10.0.1",
         "@types/node": "^16.11.12",
@@ -29,6 +47,7 @@
         "prettier": "^2.5.1",
         "rollup": "^3.6.0",
         "rollup-plugin-dts": "^5.0.0",
+        "rollup-plugin-tsc-alias": "^1.1.2",
         "rollup-plugin-typescript2": "^0.34.1",
         "ts-node": "^10.4.0",
         "tsc-alias": "^1.6.3",
