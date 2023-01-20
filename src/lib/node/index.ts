@@ -1,6 +1,7 @@
 import ServerSocket from '@/lib/socket/server';
-import { NodeAction, NodeActionFunctionParam, NodeActionPromise, NodeActionResult } from '@/typings/node';
-import { SocketCallback, SocketResponseAction, SocketType } from '@/typings/socket';
+import { SocketBroadcastMsgContent } from '@/typings';
+import { NodeAction, NodeActionFunctionParam, NodeActionPromise, NodeActionResult, NodeEmitKey, NodeOnListener } from '@/typings/node';
+import { ClientSocketEvent, ServerSocketEvent, SocketCallback, SocketResponseAction, SocketType } from '@/typings/socket';
 import BaseError from '../error';
 import ClientSocket from '../socket/client';
 
@@ -16,16 +17,23 @@ export default class Node<Action extends NodeAction, Type extends SocketType> {
     // 创建成功
     protected created() {
         // 绑定监听事件
-        this.on = this.socket.on.bind(this.socket) as Type extends SocketType.client ? ClientSocket['on'] : ServerSocket['on'];
+        this.on = this.socket.on.bind(this.socket) as any;
+        this.emit = this.socket.emit.bind(this.socket);
         this.publish = this.socket.publish.bind(this.socket);
         this.subscribe = this.socket.subscribe.bind(this.socket);
         this.unsubscribe = this.socket.unsubscribe.bind(this.socket);
+        this.broadcast = this.socket.broadcast.bind(this.socket);
     }
+
+    /**
+     * 事件触发
+     */
+    public emit!: <Key extends string>(action: NodeEmitKey<Key, Action & ClientSocketEvent & ServerSocketEvent>, ...content: any[]) => void;
 
     /**
      * 事件监听
      */
-    public on!: Type extends SocketType.client ? ClientSocket['on'] : ServerSocket['on'];
+    public on!: <T extends string>(event: T, listener: NodeOnListener<T, Action, Type extends SocketType.client ? ClientSocketEvent : ServerSocketEvent>) => void;
 
     /**
      * 发布者
@@ -36,6 +44,11 @@ export default class Node<Action extends NodeAction, Type extends SocketType> {
      * 订阅者
      */
     public subscribe!: (action: string, cb: SocketCallback) => void;
+
+    /**
+     * 广播
+     */
+    public broadcast!: (action: string, content: SocketBroadcastMsgContent) => void;
 
     /**
      * 取消订阅者

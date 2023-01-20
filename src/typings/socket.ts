@@ -1,7 +1,7 @@
 import Context from '@/lib/context';
 import { Server, Socket } from 'net';
 import { ClientSocket } from '..';
-import { SocketBroadcastMsgContent, SocketMessage, SocketSysMsgContent } from './message';
+import { SocketBroadcastMsgContent, SocketMessage, SocketSysEvent, SocketSysMsgContent } from './message';
 
 /**
  * 客户端和服务端的绑定状态
@@ -44,29 +44,29 @@ export type SocketMessageEvent = { [key in `${'request' | 'subscribe'}:${string}
 /**
  * 原生socket事件
  */
-export interface NetSocketEvent extends SocketMessageEvent {
+export type NetSocketEvent = SocketMessageEvent & {
     error: (e: Error) => void; // 错误
     close: (socket: Socket) => void; // 关闭 在end事件触发之后触发
     end: (socket: Socket) => void; // 结束 比close先执行
     connect: (socket: Socket) => void; // 请求成功
     data: (buf: Buffer, message: SocketMessage) => void; // socket传送数据
-}
+};
 
 /**
  * 原生Server事件
  */
-export interface NetServerEvent extends SocketMessageEvent {
+export type NetServerEvent = SocketMessageEvent & {
     error: (e: Error) => void; // server error
     close: (server: Server) => void; // server close
     connect: (socket: Socket) => void; // 客户端连接
     listening: (Server: Server) => void; // 服务端启动 等同于online
     data: (buf: Buffer, client: ClientSocket) => void; // 收到客户端的消息
-}
+};
 
 /**
  * 客户端自定义事件
  */
-export interface ClientSocketEvent extends NetSocketEvent {
+export type ClientSocketEvent = NetSocketEvent & {
     beforeBind: (content: ClientSocketBindOptions, socket: Socket) => void; // 开始绑定，还没发送bind:callback
     afterBind: (content: ServerSocketBindResult, socket: Socket) => void; // 绑定回调
     offline: (socket: Socket) => void; // 自己下线成功
@@ -75,24 +75,24 @@ export interface ClientSocketEvent extends NetSocketEvent {
     disconnect: (socket: Socket) => void; // 开始重连
     send: (message: SocketMessage) => void; // 发出消息
     online: (socket: Socket) => void; // 自己上线成功
-    broadcast: (content: SocketBroadcastMsgContent) => void; // 收到广播消息
+    broadcast: (action: SocketSysEvent, content: SocketBroadcastMsgContent) => void; // 收到广播消息
     message: (message: SocketMessage) => void; // 收到规范的消息了
     sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
     subscribe: (message: SocketMessage) => void; // 收到订阅的消息了
-}
+};
 
 /**
  * 服务端事件
  */
-export interface ServerSocketEvent extends NetServerEvent {
+export type ServerSocketEvent = NetServerEvent & {
     send: (message: SocketMessage) => void; // 发出消息
     online: (socket: Server) => void; // 自己上线成功
     disconnect: (socket: Server) => void; // 开始重连
     message: (message: SocketMessage, client: ClientSocket) => void; // // client send message
     sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
-    broadcast: (content: SocketBroadcastMsgContent) => void; // 收到广播消息
+    broadcast: (action: SocketSysEvent, content: SocketBroadcastMsgContent) => void; // 收到广播消息
     subscribe: (message: SocketMessage) => void; // 收到订阅的消息了
-}
+};
 
 /**
  * 客户端连接配置

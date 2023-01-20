@@ -108,4 +108,68 @@ describe('客户端和服务端的绑定测试', () => {
                 });
         });
     });
+
+    describe('服务端请求', () => {
+        it('服务端请求，服务端返回', (done) => {
+            masterReq
+                .add2(1, 2)
+                .then((result) => {
+                    assert.equal(result, 4);
+                })
+                .catch((e) => {
+                    assert.fail(e);
+                })
+                .finally(() => {
+                    done();
+                });
+        });
+        it('服务端广播，客户端接收', (done) => {
+            master1.broadcast('socket:notification', { event: 'sss', content: 111 });
+            let index = 0;
+            const fun = () => {
+                index++;
+                if (index === 2) {
+                    done();
+                }
+            };
+            branch1.on('broadcast', (action, content) => {
+                if (action === 'socket:notification') {
+                    assert.equal(content.event, 'sss');
+                    assert.equal(content.content, 111);
+                    fun();
+                }
+            });
+            branch2.on('broadcast', (action, content) => {
+                if (action === 'socket:notification') {
+                    assert.equal(content.event, 'sss');
+                    assert.equal(content.content, 111);
+                    fun();
+                }
+            });
+        });
+        it('客户端广播，客户端和服务端接收', (done) => {
+            branch1.broadcast('socket:notification', { event: 'sss', content: 111 });
+            let index = 0;
+            const fun = () => {
+                index++;
+                if (index === 2) {
+                    done();
+                }
+            };
+            master1.on('broadcast', (action, content) => {
+                if (action === 'socket:notification') {
+                    assert.equal(content.event, 'sss');
+                    assert.equal(content.content, 111);
+                    fun();
+                }
+            });
+            branch2.on('broadcast', (action, content) => {
+                if (action === 'socket:notification') {
+                    assert.equal(content.event, 'sss');
+                    assert.equal(content.content, 111);
+                    fun();
+                }
+            });
+        });
+    });
 });

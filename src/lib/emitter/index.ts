@@ -2,7 +2,7 @@ import { blueColor, cyanColor, debug, error, log, success } from '@/utils/debug'
 import EventEmitter from 'eventemitter3';
 
 // 日志等级
-type EmitterEventLevel = 'success' | 'log' | 'debug' | 'error';
+export type EmitterEventLevel = 'success' | 'log' | 'debug' | 'error';
 
 /**
  * 事件基础

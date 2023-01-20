@@ -1,3 +1,5 @@
+import { EmitterEventLevel } from '@/lib/emitter';
+
 /**
  * 节点动作
  */
@@ -6,12 +8,12 @@ export type NodeAction = Record<string, ((...args: any[]) => Promise<void>) | ((
 /**
  * 获取函数名
  */
-type NodeActionKey<F extends NodeAction> = keyof F;
+export type NodeActionKey<F extends NodeAction> = keyof F;
 
 /**
  * 函数内容
  */
-type NodeActionFunction<F extends NodeAction, K extends NodeActionKey<F>> = K extends NodeActionKey<F> ? F[K] : never;
+export type NodeActionFunction<F extends NodeAction, K extends NodeActionKey<F>> = K extends NodeActionKey<F> ? F[K] : never;
 
 /**
  * 函数返回内容
@@ -30,3 +32,17 @@ export type NodeActionFunctionParam<F extends NodeAction, K extends NodeActionKe
 export type NodeActionPromise<F extends NodeAction> = {
     [K in NodeActionKey<F>]: NodeActionResult<F, K> extends Promise<any> ? NodeActionFunction<F, K> : (...args: NodeActionFunctionParam<F, K>) => Promise<NodeActionResult<F, K>>;
 };
+
+/**
+ * 节点的emit key
+ */
+export type NodeEmitKey<T extends string, K extends NodeAction> = T extends keyof K | `${'request' | 'subscribe' | 'socket'}:${string}` | 'logger' ? never : T;
+
+/**
+ * 监听事件 listener
+ */
+export type NodeOnListener<T extends string, K extends NodeAction, F extends NodeAction> = T extends 'logger'
+    ? (level: EmitterEventLevel, title: string, ...args: any[]) => void
+    : T extends `${'request' | 'subscribe' | 'socket'}:${string}` | keyof K
+    ? never
+    : (...content: T extends keyof F ? NodeActionFunctionParam<F, T> : any[]) => void;

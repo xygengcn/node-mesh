@@ -11,9 +11,9 @@ export enum SocketMessageType {
 /**
  * 消息体结构
  */
-export type SocketMessage<T = any | null> = {
+export type SocketMessage<T = any | null, Action extends string = string> = {
     msgId: string; // 请求id 唯一值
-    action: string; // 动作
+    action: Action; // 动作
     type: SocketMessageType; // 消息类型，请求或者发布，请求有消息回调，发布没有回调
     time: number; // 消息时间
     headers: {

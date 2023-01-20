@@ -67,10 +67,10 @@ function serverSysNotificationMsg(server: ServerSocket, message: SocketMessage) 
 export default function serverSysMsgMiddleware(server: ServerSocket): ClientMiddleware {
     return (ctx: Context, next) => {
         if (ctx.body) {
-            const message: SocketMessage = ctx.toJson();
+            const message = ctx.toJson() as SocketMessage<SocketSysMsgContent, SocketSysEvent>;
             // 广播消息
-            if (message && typeof message === 'object' && message?.action && message?.msgId && message.type === SocketMessageType.broadcast) {
-                const sysMsgContent = message.content.content as SocketBroadcastMsgContent;
+            if (message && typeof message === 'object' && message?.action && message?.msgId && message.type === SocketMessageType.broadcast && message.content?.content) {
+                const sysMsgContent = message.content.content;
 
                 // 日志
                 server.log('[server-broadcast-receive]', '事件', sysMsgContent.event, '消息', message.msgId);
@@ -80,10 +80,10 @@ export default function serverSysMsgMiddleware(server: ServerSocket): ClientMidd
                     // 通知消息处理
                     serverSysNotificationMsg(server, message);
                     // 回调
-                    server.emit('sysMessage', sysMsgContent as SocketSysMsgContent);
+                    server.emit('sysMessage', sysMsgContent);
                 }
                 // 默认广播消息
-                server.emit('broadcast', sysMsgContent);
+                server.emit('broadcast', message.action, sysMsgContent);
 
                 // 广播消息
                 server.broadcast(
