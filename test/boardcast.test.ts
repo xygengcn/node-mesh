@@ -42,26 +42,26 @@ describe('广播测试', () => {
                     done();
                 }
             };
-            client1.on('broadcast', (msgContent) => {
-                if (msgContent.event === 'client-test') {
+            client1.on('broadcast', (action, msgContent) => {
+                if (action === 'test' && msgContent.event === 'client-test') {
                     client1.off('broadcast');
                     assert.fail('发出广播的不能收到广播');
                 }
             });
-            client2.on('broadcast', (msgContent) => {
-                if (msgContent.event === 'client-test') {
+            client2.on('broadcast', (action, msgContent) => {
+                if (action === 'test' && msgContent.event === 'client-test') {
                     func(msgContent);
                     client2.off('broadcast');
                 }
             });
-            client3.on('broadcast', (msgContent) => {
-                if (msgContent.event === 'client-test') {
+            client3.on('broadcast', (action, msgContent) => {
+                if (action === 'test' && msgContent.event === 'client-test') {
                     func(msgContent);
                     client3.off('broadcast');
                 }
             });
-            server.on('broadcast', (msgContent) => {
-                if (msgContent.event === 'client-test') {
+            server.on('broadcast', (action, msgContent) => {
+                if (action === 'test' && msgContent.event === 'client-test') {
                     func(msgContent);
                     server.off('broadcast');
                 }
@@ -83,26 +83,26 @@ describe('广播测试', () => {
                     done();
                 }
             };
-            client1.on('broadcast', (msgContent) => {
-                if (msgContent.event === 'server-test') {
+            client1.on('broadcast', (action, msgContent) => {
+                if (action === 'test' && msgContent.event === 'server-test') {
                     func(msgContent);
                     client1.off('broadcast');
                 }
             });
-            client2.on('broadcast', (msgContent) => {
-                if (msgContent.event === 'server-test') {
+            client2.on('broadcast', (action, msgContent) => {
+                if (action === 'test' && msgContent.event === 'server-test') {
                     func(msgContent);
                     client2.off('broadcast');
                 }
             });
-            client3.on('broadcast', (msgContent) => {
-                if (msgContent.event === 'server-test') {
+            client3.on('broadcast', (action, msgContent) => {
+                if (action === 'test' && msgContent.event === 'server-test') {
                     func(msgContent);
                     client3.off('broadcast');
                 }
             });
-            server.on('broadcast', (msgContent) => {
-                if (msgContent.event === 'server-test') {
+            server.on('broadcast', (action, msgContent) => {
+                if (action === 'test' && msgContent.event === 'server-test') {
                     func(msgContent);
                     server.off('broadcast');
                 }

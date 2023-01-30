@@ -58,7 +58,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     // 构造函数
     constructor(options: ServerSocketOptions) {
         const namespace = `Server_${options.serverId}`;
-        super(namespace);
+        super(namespace, options.debug);
         this.options = Object.assign(this.options, options || {});
         this.status = 'waiting';
         this.createServer();
@@ -71,13 +71,15 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         this.status = 'offline';
         const count = await this.getConnections();
         this.emit('disconnect', this.server);
-        this.log('[disconnect]', '目前连接数', count, '客户端数量', this.clients.size);
+        this.warn('[disconnect]', '目前连接数', count, '客户端数量', this.clients.size);
         // 停止后把所有的客户端断开
         this.clients.forEach((client) => {
             this.handleClientRemove(client);
             client.disconnect();
+            client.socket.unref();
             client.off();
         });
+        this.clients.clear();
         this.server.close();
     }
 
@@ -129,7 +131,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
     private requestMessage<T = any>(action: string, content: Array<NotFunction<T>>, callback: (error: Error | null, ...result: any[]) => void) {
         if (this.server) {
             // 生成唯一id
-            const msgId = msgUUID(this.serverId);
+            const msgId = msgUUID(`${this.serverId}-${action}`);
 
             // log
             this.log('[request-message]', 'action:', action, '发出消息:', msgId);
@@ -475,17 +477,17 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
         // 收到end
         client.on('end', () => {
-            this.debug('[client-end]', client.targetId);
+            this.warn('[client-end]', client.targetId);
         });
 
         // 关闭通知
         client.on('close', () => {
-            this.debug('[client-close]', client.targetId);
+            this.warn('[client-close]', client.targetId);
         });
 
         // 离线通知
         client.on('disconnect', () => {
-            this.debug('[client-disconnect]', client.targetId);
+            this.warn('[client-disconnect]', client.targetId);
             client.off();
             this.handleClientRemove(client);
         });

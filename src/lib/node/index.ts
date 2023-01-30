@@ -2,8 +2,13 @@ import ServerSocket from '@/lib/socket/server';
 import { SocketBroadcastMsgContent } from '@/typings';
 import { NodeAction, NodeActionFunctionParam, NodeActionPromise, NodeActionResult, NodeEmitKey, NodeOnListener } from '@/typings/node';
 import { ClientSocketEvent, ServerSocketEvent, SocketCallback, SocketResponseAction, SocketType } from '@/typings/socket';
+import { EmitterDebugEvent } from '../emitter';
 import BaseError from '../error';
 import ClientSocket from '../socket/client';
+
+export interface NodeOptions {
+    debug?: EmitterDebugEvent; // 日志
+}
 
 export default class Node<Action extends NodeAction, Type extends SocketType> {
     /**
@@ -12,7 +17,7 @@ export default class Node<Action extends NodeAction, Type extends SocketType> {
     protected socket!: Type extends SocketType.client ? ClientSocket : ServerSocket;
 
     // 构建分支
-    constructor() {}
+    constructor(options: NodeOptions) {}
 
     // 创建成功
     protected created() {

@@ -1,4 +1,4 @@
-import { EmitterEventLevel } from '@/lib/emitter';
+import { EmitterDebugEvent } from '@/lib/emitter';
 
 /**
  * 节点动作
@@ -36,13 +36,13 @@ export type NodeActionPromise<F extends NodeAction> = {
 /**
  * 节点的emit key
  */
-export type NodeEmitKey<T extends string, K extends NodeAction> = T extends keyof K | `${'request' | 'subscribe' | 'socket'}:${string}` | 'logger' ? never : T;
+export type NodeEmitKey<T extends string, K extends NodeAction> = T extends keyof K | `${'request' | 'subscribe' | 'socket' | 'emitter'}:${string}` | 'emitter:logger' ? never : T;
 
 /**
  * 监听事件 listener
  */
-export type NodeOnListener<T extends string, K extends NodeAction, F extends NodeAction> = T extends 'logger'
-    ? (level: EmitterEventLevel, title: string, ...args: any[]) => void
-    : T extends `${'request' | 'subscribe' | 'socket'}:${string}` | keyof K
+export type NodeOnListener<T extends string, K extends NodeAction, F extends NodeAction> = T extends 'emitter:logger'
+    ? (level: EmitterDebugEvent, title: string, ...args: any[]) => void
+    : T extends `${'request' | 'subscribe' | 'socket' | 'emitter'}:${string}` | keyof K
     ? never
     : (...content: T extends keyof F ? NodeActionFunctionParam<F, T> : any[]) => void;

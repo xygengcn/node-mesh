@@ -1,8 +1,16 @@
-import { blueColor, cyanColor, debug, error, log, success } from '@/utils/debug';
+import { debug, error, log, success, warn } from '@/utils/debug';
 import EventEmitter from 'eventemitter3';
 
 // 日志等级
-export type EmitterEventLevel = 'success' | 'log' | 'debug' | 'error';
+export enum EmitterDebugLevel {
+    debug = 0,
+    log = 1,
+    success = 2,
+    warn = 3,
+    error = 4
+}
+
+export type EmitterDebugEvent = 'debug' | 'log' | 'success' | 'warn' | 'error';
 
 /**
  * 事件基础
@@ -15,23 +23,13 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
     // 上次打印的记录
     private lastConoleLogTime: number = 0;
 
-    constructor(namespace: string) {
+    // 日志等级
+    private debugLevel: EmitterDebugLevel = EmitterDebugLevel.debug;
+
+    constructor(namespace: string, debugLevel?: EmitterDebugEvent) {
         super();
         this.namespace = namespace;
-    }
-
-    /**
-     * 日志log
-     *
-     * level 1
-     * @param title
-     * @param args
-     */
-    public log(title: string, ...args: any[]) {
-        const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
-        this.lastConoleLogTime = new Date().getTime();
-        Number(process.env.DEBUG_LEVEL || 0) <= 1 && log(cyanColor(time), `[NS-${this.namespace}]`, blueColor(title), ...args);
-        this.emit('logger', 'log', title, ...args);
+        this.debugLevel = (debugLevel && EmitterDebugLevel[debugLevel]) || EmitterDebugLevel.debug;
     }
 
     /**
@@ -42,24 +40,26 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param args
      */
     public debug(title: string, ...args: any[]) {
+        if (this.debugLevel > EmitterDebugLevel.debug || Number(process.env.DEBUG_LEVEL || 0) > EmitterDebugLevel.debug) return this;
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
-        Number(process.env.DEBUG_LEVEL || 0) <= 0 && debug(cyanColor(time), `[NS-${this.namespace}]`, blueColor(title), ...args);
-        this.emit('logger', 'debug', title, ...args);
+        debug(time, `[NS-${this.namespace}]`, title, ...args);
+        this.emit('emitter:logger', 'debug', title, ...args);
     }
 
     /**
-     * 错误日志log
+     * 日志log
      *
-     * level 3
+     * level 1
      * @param title
      * @param args
      */
-    public logError(title: string, errorMsg: Error) {
+    public log(title: string, ...args: any[]) {
+        if (this.debugLevel > EmitterDebugLevel.log || Number(process.env.DEBUG_LEVEL || 0) > EmitterDebugLevel.log) return this;
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
-        Number(process.env.DEBUG_LEVEL || 0) <= 3 && error(cyanColor(time), `[NS-${this.namespace}]`, blueColor(title), errorMsg);
-        this.emit('logger', 'error', title, errorMsg);
+        log(time, `[NS-${this.namespace}]`, title, ...args);
+        this.emit('emitter:logger', 'log', title, ...args);
     }
 
     /**
@@ -70,10 +70,41 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param args
      */
     public success(title: string, ...args: any[]) {
+        if (this.debugLevel > EmitterDebugLevel.success || Number(process.env.DEBUG_LEVEL || 0) > EmitterDebugLevel.success) return this;
         const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
         this.lastConoleLogTime = new Date().getTime();
-        Number(process.env.DEBUG_LEVEL || 0) <= 2 && success(cyanColor(time), `[NS-${this.namespace}]`, blueColor(title), ...args);
-        this.emit('logger', 'error', title, ...args);
+        success(time, `[NS-${this.namespace}]`, title, ...args);
+        this.emit('emitter:logger', 'error', title, ...args);
+    }
+
+    /**
+     * 警告日志log
+     *
+     * level 3
+     * @param title
+     * @param args
+     */
+    public warn(title: string, ...args: any[]) {
+        if (this.debugLevel > EmitterDebugLevel.success || Number(process.env.DEBUG_LEVEL || 0) > EmitterDebugLevel.success) return this;
+        const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
+        this.lastConoleLogTime = new Date().getTime();
+        warn(time, `[NS-${this.namespace}]`, title, ...args);
+        this.emit('emitter:logger', 'error', title, ...args);
+    }
+
+    /**
+     * 错误日志log
+     *
+     * level 4
+     * @param title
+     * @param args
+     */
+    public logError(title: string, errorMsg: Error) {
+        if (this.debugLevel > EmitterDebugLevel.error || Number(process.env.DEBUG_LEVEL || 0) > EmitterDebugLevel.error) return this;
+        const time = this.lastConoleLogTime ? new Date().getTime() - this.lastConoleLogTime + 'ms' : '';
+        this.lastConoleLogTime = new Date().getTime();
+        error(time, `[NS-${this.namespace}]`, title, errorMsg);
+        this.emit('emitter:logger', 'error', title, errorMsg);
     }
 
     /**
@@ -82,7 +113,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param listener
      * @returns
      */
-    public on(event: 'logger', listener: (level: EmitterEventLevel, title: string, ...args: any[]) => void): this;
+    public on(event: 'emitter:logger', listener: (level: EmitterDebugEvent, title: string, ...args: any[]) => void): this;
     public on<T extends EventEmitter.EventNames<K>>(event: T, listener: EventEmitter.EventListener<K, T>): this;
     public on(event, listener) {
         return super.on(event, listener);
@@ -94,7 +125,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param listener
      * @returns
      */
-    public once(event: 'logger', listener: (level: EmitterEventLevel, title: string, ...args: any[]) => void): this;
+    public once(event: 'emitter:logger', listener: (level: EmitterDebugEvent, title: string, ...args: any[]) => void): this;
     public once<T extends EventEmitter.EventNames<K>>(event: T, listener: EventEmitter.EventListener<K, T>);
     public once(event, listener) {
         return super.once(event, listener);
@@ -106,7 +137,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param listener
      * @returns
      */
-    public emit(event: 'logger', level: EmitterEventLevel, title: string, ...args: any[]): boolean;
+    public emit(event: 'emitter:logger', level: EmitterDebugEvent, title: string, ...args: any[]): boolean;
     public emit<T extends EventEmitter.EventNames<K>>(event: T, ...data: EventEmitter.EventArgs<K, T>): boolean;
     public emit(event, ...data: any) {
         return super.emit(event, ...data);
@@ -118,7 +149,7 @@ export default class Emitter<K extends EventEmitter.ValidEventTypes = string | s
      * @param listener
      * @returns
      */
-    public off(event: 'logger', listener: (level: EmitterEventLevel, title: string, ...args: any[]) => void): this;
+    public off(event: 'emitter:logger', listener: (level: EmitterDebugEvent, title: string, ...args: any[]) => void): this;
     public off<T extends EventEmitter.EventNames<K>>(event?: T, listener?: EventEmitter.EventListener<K, T>): this;
     public off(eventName, listener) {
         if (eventName && listener) {

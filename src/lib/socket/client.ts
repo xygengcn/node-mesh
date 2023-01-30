@@ -71,7 +71,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     // 构造
     constructor(options: ClientSocketOptions, socket?: Socket) {
         const namespace = `Socket-${options.type || SocketType.client}_${options.type ? options.targetId : options.clientId}`;
-        super(namespace);
+        super(namespace, options.debug);
         // 配置初始化
         this.configure(options);
 
@@ -418,7 +418,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         // 请求时间
         const requestTime = new Date().getTime();
         // 生成唯一id
-        const msgId = msg.msgId || this.msgId();
+        const msgId = msg.msgId || this.msgId(msg.action);
 
         // 发送内容
         const socketMessage: SocketMessage = {
@@ -465,7 +465,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     private requestMessage<T = any>(action: string, content: Array<NotFunction<T>>, callback: (error: Error | null, ...result: any[]) => void) {
         if (this.socket) {
             // 生成唯一id
-            const msgId = this.msgId();
+            const msgId = this.msgId(action);
 
             // log
             this.log('[request-message]', 'action:', action, '发出消息:', msgId);
@@ -518,8 +518,8 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 消息id生成
      * @returns
      */
-    private msgId(): string {
-        return msgUUID(this.clientId);
+    private msgId(action: string): string {
+        return msgUUID(`${this.clientId}-${action}`);
     }
 
     /**
@@ -611,7 +611,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
         // socket关闭的事件
         this.socket.once('close', (hadError) => {
-            this.debug('[close]', 'hadError:', hadError);
+            this.debug('[close]', 'Error:', hadError);
             // 下线
             this.handleOffline();
 

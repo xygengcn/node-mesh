@@ -1,4 +1,5 @@
 import Context from '@/lib/context';
+import { EmitterDebugEvent } from '@/lib/emitter';
 import { Server, Socket } from 'net';
 import { ClientSocket } from '..';
 import { SocketBroadcastMsgContent, SocketMessage, SocketSysEvent, SocketSysMsgContent } from './message';
@@ -75,7 +76,7 @@ export type ClientSocketEvent = NetSocketEvent & {
     disconnect: (socket: Socket) => void; // 开始重连
     send: (message: SocketMessage) => void; // 发出消息
     online: (socket: Socket) => void; // 自己上线成功
-    broadcast: (action: SocketSysEvent, content: SocketBroadcastMsgContent) => void; // 收到广播消息
+    broadcast: (action: string | SocketSysEvent, content: SocketBroadcastMsgContent) => void; // 收到广播消息
     message: (message: SocketMessage) => void; // 收到规范的消息了
     sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
     subscribe: (message: SocketMessage) => void; // 收到订阅的消息了
@@ -90,7 +91,7 @@ export type ServerSocketEvent = NetServerEvent & {
     disconnect: (socket: Server) => void; // 开始重连
     message: (message: SocketMessage, client: ClientSocket) => void; // // client send message
     sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
-    broadcast: (action: SocketSysEvent, content: SocketBroadcastMsgContent) => void; // 收到广播消息
+    broadcast: (action: string | SocketSysEvent, content: SocketBroadcastMsgContent) => void; // 收到广播消息
     subscribe: (message: SocketMessage) => void; // 收到订阅的消息了
 };
 
@@ -107,6 +108,7 @@ export interface ClientSocketOptions {
     retryDelay?: number; // 是否重连 default：3000
     timeout?: number; // 请求超时 default: 30000
     type?: SocketType; // 用来判断操作端是客户端还是服务端
+    debug?: EmitterDebugEvent; // 日志
 }
 
 /**
@@ -138,7 +140,8 @@ export interface ServerSocketOptions {
     serverId: string; // 名称
     secret?: string; // 密钥
     port: number; // 端口 default：31000
-    timeout?: number; // 请求延迟
+    timeout?: number; // 请求延迟,
+    debug?: EmitterDebugEvent; // 日志
 }
 
 /**
