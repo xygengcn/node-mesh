@@ -2,7 +2,7 @@ import { debug, error, log, success, warn } from '@/utils/debug';
 import EventEmitter from 'eventemitter3';
 
 // 日志等级
-export enum EmitterDebugLevel {
+enum EmitterDebugLevel {
     debug = 0,
     log = 1,
     success = 2,
