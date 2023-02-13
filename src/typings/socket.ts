@@ -43,6 +43,11 @@ export type SocketCallback = (error?: Error | null, content?: any) => void;
 export type SocketMessageEvent = { [key in `${'request' | 'subscribe'}:${string}`]: SocketCallback };
 
 /**
+ * 订阅消息
+ */
+export type SubscribeMessage<T = any> = Pick<SocketMessage<T>, 'action' | 'content' | 'type' | 'fromId'> & { msgId?: string };
+
+/**
  * 原生socket事件
  */
 export type NetSocketEvent = SocketMessageEvent & {
@@ -79,7 +84,7 @@ export type ClientSocketEvent = NetSocketEvent & {
     broadcast: (action: string | SocketSysEvent, content: SocketBroadcastMsgContent) => void; // 收到广播消息
     message: (message: SocketMessage) => void; // 收到规范的消息了
     sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
-    subscribe: (message: SocketMessage) => void; // 收到订阅的消息了
+    subscribe: (message: SubscribeMessage) => void; // 收到订阅的消息了
 };
 
 /**
@@ -92,7 +97,7 @@ export type ServerSocketEvent = NetServerEvent & {
     message: (message: SocketMessage, client: ClientSocket) => void; // // client send message
     sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
     broadcast: (action: string | SocketSysEvent, content: SocketBroadcastMsgContent) => void; // 收到广播消息
-    subscribe: (message: SocketMessage) => void; // 收到订阅的消息了
+    subscribe: (message: SubscribeMessage) => void; // 收到订阅的消息了
 };
 
 /**

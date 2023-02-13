@@ -1,6 +1,6 @@
 import ServerSocket from '@/lib/socket/server';
 import { SocketBroadcastMsgContent } from '@/typings';
-import { NodeAction, NodeActionFunctionParam, NodeActionPromise, NodeActionResult, NodeEmitKey, NodeOnListener } from '@/typings/node';
+import { NodeAction, NodeSysAction, NodeActionFunctionParam, NodeActionPromise, NodeActionResult, NodeEmitKey, NodeOnListener } from '@/typings/node';
 import { ClientSocketEvent, ServerSocketEvent, SocketCallback, SocketResponseAction, SocketType } from '@/typings/socket';
 import { EmitterDebugEvent } from '../emitter';
 import BaseError from '../error';
@@ -38,7 +38,10 @@ export default class Node<Action extends NodeAction, Type extends SocketType> {
     /**
      * 事件监听
      */
-    public on!: <T extends string>(event: T, listener: NodeOnListener<T, Action, Type extends SocketType.client ? ClientSocketEvent : ServerSocketEvent>) => void;
+    public on!: <T extends string = Type extends SocketType.client ? keyof ClientSocketEvent : keyof ServerSocketEvent>(
+        event: T,
+        listener: NodeOnListener<T, Action, Type extends SocketType.client ? ClientSocketEvent : ServerSocketEvent>
+    ) => void;
 
     /**
      * 发布者
@@ -63,7 +66,12 @@ export default class Node<Action extends NodeAction, Type extends SocketType> {
     /**
      * 创建请求
      */
-    public request<K extends keyof NodeAction = keyof NodeAction>(action: K, ...params: NodeActionFunctionParam<Action, K>): Promise<NodeActionResult<Action, K>> {
+    public request<K extends keyof NodeSysAction = keyof NodeSysAction>(
+        action: K,
+        ...params: NodeActionFunctionParam<NodeSysAction, K>
+    ): Promise<NodeActionResult<NodeSysAction, K>>;
+    public request<K extends keyof NodeAction = keyof NodeAction>(action: K, ...params: NodeActionFunctionParam<Action, K>): Promise<NodeActionResult<Action, K>>;
+    public request(action, ...params) {
         return this.socket.request(action, ...params);
     }
 

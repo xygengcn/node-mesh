@@ -1,14 +1,17 @@
 {
     "name": "node-mesh",
-    "version": "1.0.3",
+    "version": "1.0.8",
     "description": "Master - Branch 形式 Nodejs 微服务框架",
     "types": "dist/index.d.ts",
     "main": "dist/index.js",
     "module": "dist/index.esm.js",
     "scripts": {
         "build": "rm -rf ./dist && rollup -c rollup.config.js",
-        "server": "env-cmd -r .env.js -e development nodemon examples/server.dev.ts",
-        "dev": "env-cmd -r .env.js -e development nodemon examples/client.dev.ts",
+        "dev:s": "env-cmd -r .env.js -e development nodemon examples/server.dev.ts",
+        "dev:c": "env-cmd -r .env.js -e development nodemon examples/client.dev.ts",
+        "dev:m": "env-cmd -r .env.js -e development nodemon examples/master.dev.ts",
+        "dev:b": "env-cmd -r .env.js -e development nodemon examples/branch.dev.ts",
+        "dev:u": "env-cmd -r .env.js -e development nodemon examples/utils.dev.ts",
         "test": "env-cmd -r .env.js -e test mocha test/**.test.ts -t=5000",
         "test:dev": "env-cmd -r .env.js -e development mocha test/**.test.ts",
         "pref": "env-cmd -r .env.js -e test mocha test/pref.test.ts"

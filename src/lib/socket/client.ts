@@ -4,7 +4,7 @@ import clientSysMsgMiddleware from '@/middlewares/client-sys';
 import { NotFunction } from '@/typings';
 import { SocketBroadcastMsg, SocketBroadcastMsgContent, SocketMessage, SocketMessageType, SocketSysEvent, SocketSysMsgSubscribeContent } from '@/typings/message';
 import { ClientMiddleware, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketCallback, SocketResponseAction, SocketType } from '@/typings/socket';
-import { compose, msgUUID, parseError, parseMessage, stringifyError } from '@/utils';
+import { compose, msgUUID, parseMessage, stringifyError } from '@/utils';
 import { Stream } from 'amp';
 import Message from 'amp-message';
 import { Socket, AddressInfo } from 'net';
@@ -289,6 +289,11 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                 developerMsg
             }
         });
+        // 发给自己
+        if (this.subscriptions.has(action)) {
+            this.emit(`subscribe:${action}`, developerMsg, content);
+            this.emit('subscribe', { action, content: { content, developerMsg }, type: SocketMessageType.subscribe, msgId, fromId: this.clientId });
+        }
         this.debug('[client-publish]', msgId);
     }
 
@@ -356,6 +361,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         } else {
             this.debug('[disconnect]', '客户端断开，当前状态：', this.status);
         }
+        this.isManualClose = true;
         // 结束连接
         this.socket?.end(() => {
             this.debug('[disconnect-end-callback]');
@@ -365,7 +371,6 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             }
         });
         this.socket?.destroy(error);
-        this.isManualClose = true;
     }
 
     /**
@@ -462,7 +467,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * 封装发送消息
      * @param args
      */
-    private requestMessage<T = any>(action: string, content: Array<NotFunction<T>>, callback: (error: Error | null, ...result: any[]) => void) {
+    private requestMessage<T = any>(action: string, content: Array<NotFunction<T>>, callback: (error: Error | undefined | null, ...result: any[]) => void) {
         if (this.socket) {
             // 生成唯一id
             const msgId = this.msgId(action);
@@ -496,10 +501,10 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                 this.once(`request:${msgId}`, (error, ...result) => {
                     clearTimerEvent();
                     // 日志
-                    this.log('[request-message-receive]', '收到消息回调:', msgId);
+                    this.log('[request-message-receive]', 'client收到消息回调:', msgId);
 
                     // 需要处理错误信息
-                    callback(parseError(error), ...result);
+                    callback(error, ...result);
                 });
             }
 
@@ -624,7 +629,9 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
             this.clearReuqestTimeoutMap();
 
             // 关闭触发，重连机制
-            hadError && this.autoRetryConnect();
+            if (!this.isManualClose) {
+                this.autoRetryConnect();
+            }
         });
 
         /**

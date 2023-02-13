@@ -21,7 +21,7 @@ export type SocketMessage<T = any | null, Action extends string = string> = {
     };
     content: {
         content?: T;
-        developerMsg?: Error | null;
+        developerMsg?: Error | null | undefined;
     };
     targetId: string; // 目标id
     fromId: string; // 来自id

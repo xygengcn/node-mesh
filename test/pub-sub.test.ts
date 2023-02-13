@@ -15,6 +15,9 @@ server.on('error', (error) => {
 describe('客户端和服务端的发布订阅测试', () => {
     after(() => {
         server.disconnect();
+        client1.disconnect();
+        client2.disconnect();
+        client3.disconnect();
     });
 
     describe('订阅与发布', () => {
@@ -99,6 +102,28 @@ describe('客户端和服务端的发布订阅测试', () => {
                 client3.unsubscribe('sub/test');
             });
             client1.publish('sub/test', 'sub3');
+        });
+
+        it('服务端发布，服务端订阅，其他收不到', (done) => {
+            client1.once('subscribe', () => {
+                done('不订阅也收到了');
+            });
+            client2.once('subscribe', () => {
+                done('不订阅也收到了');
+            });
+            client3.once('subscribe', () => {
+                done('不订阅也收到了');
+            });
+            // 后端订阅
+            server.subscribe('sub/test', (e, content) => {
+                assert.equal(content, 'sub3');
+                done();
+                client1.off('subscribe');
+                client2.off('subscribe');
+                client3.off('subscribe');
+                server.unsubscribe('sub/test');
+            });
+            server.publish('sub/test', 'sub3');
         });
     });
 });

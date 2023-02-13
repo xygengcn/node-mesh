@@ -37,10 +37,14 @@ export function clientMessageMiddleware(): ClientMiddleware {
                 if (message.type === SocketMessageType.subscribe) {
                     // 日志
                     ctx.debug('[sub-message]', '收到订阅', message.action, '消息', message.msgId);
-                    // 订阅回调
+
+                    //  订阅回调
+                    //  收到客户端的订阅消息，通知服务端
                     ctx.client.emit('subscribe', message);
-                    // 触发回调
-                    ctx.client.emit(`subscribe:${message.action}`, message.content.developerMsg, message.content.content);
+                    // 客户端触发回调
+                    if (!ctx.client.isServer) {
+                        ctx.client.emit(`subscribe:${message.action}`, message.content.developerMsg, message.content.content);
+                    }
                     return;
                 }
 

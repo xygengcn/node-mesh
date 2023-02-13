@@ -73,16 +73,6 @@ export function stringifyError(error: Error | null | undefined) {
 }
 
 /**
- * 解析错误对象
- * @param error
- */
-export function parseError(error: Error | null | undefined) {
-    if (!error) return null;
-    const errObj = parseJson(error) as Error;
-    return Error(errObj.message, errObj);
-}
-
-/**
  * compose函数
  * @param middlewares
  * @returns

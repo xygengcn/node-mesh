@@ -11,7 +11,7 @@ import Context from '@/lib/context';
  * @returns
  */
 export default function serverBindMiddleware(server: ServerSocket): ClientMiddleware {
-    return (ctx: Context, next) => {
+    return async (ctx: Context, next) => {
         if (ctx.body) {
             const message: SocketMessage = ctx.toJson();
             // 客户端来绑定
@@ -50,6 +50,13 @@ export default function serverBindMiddleware(server: ServerSocket): ClientMiddle
                         // 绑定成功
                         const responseActions = bind.responseActions || [];
 
+                        // 清除旧绑定的客户端
+                        server.clients.forEach((client, id) => {
+                            if (client.targetId === bind.clientId && id !== socketId) {
+                                server.clients.delete(id);
+                            }
+                        });
+
                         // 开始注册动作
                         responseActions.forEach((actionKey) => {
                             // 把客户端带过来的keys放到服务端对应的客户端副本
@@ -75,6 +82,8 @@ export default function serverBindMiddleware(server: ServerSocket): ClientMiddle
                         });
 
                         // 客户端上线
+                        const count = await server.getConnections();
+                        server.debug('[online]', '当前客户端数量:', server.clients.size, '连接数量:', count);
                         client.emit('online', client.socket);
 
                         // 回传消息
@@ -84,6 +93,7 @@ export default function serverBindMiddleware(server: ServerSocket): ClientMiddle
                                 status: SocketBindStatus.success
                             }
                         });
+
                         return;
                     }
 

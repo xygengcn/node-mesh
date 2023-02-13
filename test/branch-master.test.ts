@@ -45,7 +45,7 @@ describe('客户端和服务端的绑定测试', () => {
                     assert.equal(result, 3);
                 })
                 .catch((e) => {
-                    assert.fail(e);
+                    done(e);
                 })
                 .finally(() => {
                     done();
@@ -58,7 +58,7 @@ describe('客户端和服务端的绑定测试', () => {
                     assert.equal(result, 4);
                 })
                 .catch((e) => {
-                    assert.fail(e);
+                    done(e);
                 })
                 .finally(() => {
                     done();
@@ -72,7 +72,22 @@ describe('客户端和服务端的绑定测试', () => {
                     assert.equal(result, 6);
                 })
                 .catch((e) => {
-                    assert.fail(e);
+                    done(e);
+                })
+                .finally(() => {
+                    done();
+                });
+        });
+
+        it('客户端请求默认事件，有两个客户端', (done) => {
+            branch2
+                .request('node:clients')
+                .then((result) => {
+                    console.log(1111, result);
+                    assert.equal(result.length, 2);
+                })
+                .catch((e) => {
+                    done(e);
                 })
                 .finally(() => {
                     done();
@@ -88,7 +103,7 @@ describe('客户端和服务端的绑定测试', () => {
                     assert.equal(result, 4);
                 })
                 .catch((e) => {
-                    assert.fail(e);
+                    done(e);
                 })
                 .finally(() => {
                     done();
@@ -101,7 +116,7 @@ describe('客户端和服务端的绑定测试', () => {
                     assert.equal(result, 5);
                 })
                 .catch((e) => {
-                    assert.fail(e);
+                    done(e);
                 })
                 .finally(() => {
                     done();
@@ -117,7 +132,7 @@ describe('客户端和服务端的绑定测试', () => {
                     assert.equal(result, 4);
                 })
                 .catch((e) => {
-                    assert.fail(e);
+                    done(e);
                 })
                 .finally(() => {
                     done();

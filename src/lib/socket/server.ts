@@ -1,4 +1,4 @@
-import { msgUUID, parseError } from '@/utils';
+import { msgUUID } from '@/utils';
 import serverBindMiddleware from '@/middlewares/server-bind';
 import serverSysMsgMiddleware from '@/middlewares/server-sys';
 import { NotFunction } from '@/typings';
@@ -128,7 +128,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
      * 封装发送消息
      * @param args
      */
-    private requestMessage<T = any>(action: string, content: Array<NotFunction<T>>, callback: (error: Error | null, ...result: any[]) => void) {
+    private requestMessage<T = any>(action: string, content: Array<NotFunction<T>>, callback: (error: Error | undefined | null, ...result: any[]) => void) {
         if (this.server) {
             // 生成唯一id
             const msgId = msgUUID(`${this.serverId}-${action}`);
@@ -170,10 +170,10 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
             this.once(`request:${msgId}`, (error, ...result) => {
                 clearTimerEvent();
                 // 日志
-                this.log('[request-message-receive]', '收到消息回调:', msgId);
+                this.log('[request-message-receive]', 'server收到消息回调:', msgId);
 
                 // 需要处理错误信息
-                callback(parseError(error), ...result);
+                callback(error, ...result);
             });
         }
     }
@@ -272,7 +272,14 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
      * @param content
      */
     public publish<T = any>(action: string, content: T, developerMsg?: Error | undefined) {
-        this.debug('[server-publish]', '发布消息', action);
+        this.debug('[server-publish]', '发布消息', developerMsg, content);
+        // 服务端订阅了
+        if (this.subscriptions.has(action)) {
+            // 触发回调
+            this.emit(`subscribe:${action}`, developerMsg, content);
+            // 订阅回调
+            this.emit('subscribe', { action, content: { content, developerMsg }, type: SocketMessageType.subscribe, fromId: this.serverId });
+        }
         this.broadcastMsgToClient(
             {
                 action,
@@ -322,7 +329,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
                 // 客户端在线
                 if (client.status === 'online') {
                     if ((filters && typeof filters === 'function' && filters(client)) || filters === undefined) {
-                        clients.push(client.clientId);
+                        clients.push(client.targetId);
                         client.send<SocketBroadcastMsg>(message);
                     }
                 }
@@ -372,7 +379,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
      * 获取连接数
      * @returns
      */
-    private getConnections(): Promise<number> {
+    public getConnections(): Promise<number> {
         return new Promise((resolve) => {
             this.server.getConnections((error, count) => {
                 if (error) {
@@ -503,16 +510,17 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
             // 服务端订阅了
             if (this.subscriptions.has(message.action)) {
                 // 触发回调
-                this.emit(`subscribe:${message.action}`, message.content.developerMsg, message.content.content);
+                this.emit(`subscribe:${message.action}`, message.content?.developerMsg, message.content?.content);
                 // 订阅回调
                 this.emit('subscribe', message);
             }
             // 有订阅的才发送
-            const subscribeClients = this.broadcastMsgToClient(message, (client) => {
-                return client.isSubscribe(message.action);
+            const subscribeClients = this.broadcastMsgToClient(message, (c) => {
+                // 排除自己
+                return c.isSubscribe(message.action) && client.targetId !== c.targetId;
             });
 
-            this.debug('[client-subscribe]', '订阅事件', message.action, '客户端', subscribeClients);
+            this.debug('[client-subscribe]', '订阅事件', message, '客户端订阅：', subscribeClients);
         });
 
         // 客户端上线
@@ -533,8 +541,9 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         });
 
         // 下线通知
-        client.on('offline', () => {
-            this.debug('[client-offline]', client.targetId);
+        client.on('offline', async () => {
+            const count = await this.getConnections();
+            this.debug('[client-offline]', client.targetId, '当前客户端数量:', this.clients.size, '连接数量:', count);
             // 自己发出客户端下线通知
             const content: SocketSysMsgOnlineOrOfflineContent = {
                 event: SocketSysEvent.socketoffline,
