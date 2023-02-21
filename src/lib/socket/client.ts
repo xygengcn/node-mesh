@@ -306,6 +306,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @param cb
      */
     public subscribe(action: string, cb?: SocketCallback) {
+        this.log('[subscribe]', action);
         // 已经是在线，需要通知服务端
         if (this.status === 'online') {
             this.broadcast<SocketSysMsgSubscribeContent>(SocketSysEvent.socketNotification, {
@@ -325,16 +326,24 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      * @param action
      * @returns
      */
-    public unsubscribe(action: string) {
-        // 已经是在线，需要通知服务端
-        if (this.status === 'online') {
-            this.broadcast<SocketSysMsgSubscribeContent>(SocketSysEvent.socketNotification, {
-                event: SocketSysEvent.socketSub,
-                content: { action, subscribe: false, socketId: this.getSocketId() }
-            });
+    public unsubscribe(action: string, cb?: SocketCallback) {
+        this.log('[unsubscribe]', action);
+        if (cb) {
+            this.off(`subscribe:${action}`, cb);
+        } else {
+            this.off(`subscribe:${action}`);
         }
-        this.subscriptions.delete(action);
-        this.off(`subscribe:${action}`);
+        const listenCount = this.listenerCount(`subscribe:${action}`);
+        if (listenCount === 0) {
+            // 已经是在线，需要通知服务端
+            if (this.status === 'online') {
+                this.broadcast<SocketSysMsgSubscribeContent>(SocketSysEvent.socketNotification, {
+                    event: SocketSysEvent.socketSub,
+                    content: { action, subscribe: false, socketId: this.getSocketId() }
+                });
+            }
+            this.subscriptions.delete(action);
+        }
     }
 
     /**

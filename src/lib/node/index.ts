@@ -61,7 +61,7 @@ export default class Node<Action extends NodeAction, Type extends SocketType> {
     /**
      * 取消订阅者
      */
-    public unsubscribe!: (action: string) => void;
+    public unsubscribe!: (action: string, cb?: SocketCallback) => void;
 
     /**
      * 创建请求
