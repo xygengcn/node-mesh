@@ -66,7 +66,7 @@ export type NetServerEvent = SocketMessageEvent & {
     close: (server: Server) => void; // server close
     connect: (socket: Socket) => void; // 客户端连接
     listening: (Server: Server) => void; // 服务端启动 等同于online
-    data: (buf: Buffer, client: ClientSocket) => void; // 收到客户端的消息
+    data: (buf: Buffer, message: SocketMessage, client: ClientSocket) => void; // 收到客户端的消息
 };
 
 /**

@@ -24,7 +24,7 @@ export default class Context {
     /**
      * 消息
      */
-    private message: SocketMessage;
+    private message!: SocketMessage;
 
     /**
      * 日志
@@ -34,12 +34,14 @@ export default class Context {
     public logError: Emitter['logError'];
     public success: Emitter['success'];
 
-    constructor(data: Buffer | undefined, message: SocketMessage, client: ClientSocket) {
+    constructor(client: ClientSocket, data: Buffer | undefined, message: SocketMessage) {
         this.id = client.clientId;
         this.client = client;
-        this.body = data;
         this.socket = client.socket;
-        this.message = message;
+        if (data instanceof Buffer) {
+            this.body = data;
+            this.message = message;
+        }
         this.log = client.log.bind(client);
         this.debug = client.debug.bind(client);
         this.logError = client.logError.bind(client);

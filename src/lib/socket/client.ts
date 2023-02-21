@@ -547,7 +547,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         this.emit(hook as any, ...(args as any));
         const plugin = this.middlewares.get(hook);
         if (plugin?.plugin) {
-            const ctx = new Context(args[0] instanceof Buffer ? args[0] : undefined, args[1], this);
+            const ctx = new Context(this, args[0], args[1]);
             return plugin.plugin.call(this, ctx);
         }
         return Promise.resolve();

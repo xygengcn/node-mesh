@@ -473,8 +473,8 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
         client.use('data', serverSysMsgMiddleware(this));
 
         // 消息通知
-        client.on('data', (buf) => {
-            this.emit('data', buf, client);
+        client.on('data', (buf, message) => {
+            this.emit('data', buf, message, client);
         });
 
         // 客户端发出消息
