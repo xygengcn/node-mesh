@@ -14,7 +14,7 @@
         "dev:u": "env-cmd -r .env.js -e development nodemon examples/utils.dev.ts",
         "test": "env-cmd -r .env.js -e test mocha test/**.test.ts -t=5000",
         "test:dev": "env-cmd -r .env.js -e development mocha test/**.test.ts",
-        "pref": "env-cmd -r .env.js -e test mocha test/pref.test.ts"
+        "pref": "env-cmd -r .env.js -e test mocha test/pref/pref.test.ts -t=100000"
     },
     "homepage": "https://github.com/xygengcn/node-mesh",
     "repository": {

@@ -2,8 +2,8 @@ import { SocketCallback } from '@/typings/socket';
 import assert from 'assert';
 import { ClientSocket, ServerSocket } from '../src/index';
 
-const server = new ServerSocket({ port: 3009, serverId: 'server1' });
-const client1 = new ClientSocket({ port: 3009, host: '0.0.0.0', clientId: 'client1', targetId: 'server1' });
+const server = new ServerSocket({ port: 3010, serverId: 'server1' });
+const client1 = new ClientSocket({ port: 3010, host: '0.0.0.0', clientId: 'client1', targetId: 'server1' });
 
 server.start();
 
