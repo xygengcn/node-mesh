@@ -1,5 +1,7 @@
 import assert from 'assert';
 import { Master, Branch } from '../../src/index';
+import fs from 'fs';
+import path from 'path';
 
 const server = new Master('master', { port: 3002 });
 
@@ -7,7 +9,25 @@ const actions = { add: (num: string) => {} };
 
 const clients: Branch<typeof actions>[] = [];
 
-for (let i = 0; i <= 19; i++) {
+/**
+ * 发送文本
+ */
+const text = fs.readFileSync(path.join(__dirname, './text.txt')).toString();
+
+/**
+ * 客户端数量
+ */
+const ClientMaxNums = 10;
+
+/**
+ * 发消息数量
+ */
+const MessageMaxNums = 1000;
+
+/**
+ * 批量创建客户端
+ */
+for (let i = 0; i < ClientMaxNums; i++) {
     const client = new Branch<typeof actions>('branch-' + i, { port: 3002, master: 'master' });
     client.on('error', (error) => {
         console.log('[client-error]', error);
@@ -35,8 +55,8 @@ describe('客户端和服务端的发消息性能测试', () => {
             const func = (client: Branch<typeof actions>) => {
                 const requests: Promise<any>[] = [];
                 let resultNum = 0;
-                for (let i = 0; i <= 9999; i++) {
-                    const data = new Date().getTime() + '-' + i;
+                for (let i = 0; i < MessageMaxNums; i++) {
+                    const data = new Date().getTime() + '-i-' + text;
                     const promise = client
                         .request('add', data)
                         .then((result) => {
@@ -51,7 +71,7 @@ describe('客户端和服务端的发消息性能测试', () => {
                 }
                 return Promise.allSettled(requests)
                     .then((result) => {
-                        assert.equal(resultNum, 10000);
+                        assert.equal(resultNum, MessageMaxNums);
                     })
                     .catch((e) => {
                         done(e);
@@ -65,7 +85,7 @@ describe('客户端和服务端的发消息性能测试', () => {
             });
             Promise.allSettled(promises)
                 .then(() => {
-                    assert.equal(clientNums, 20);
+                    assert.equal(clientNums, ClientMaxNums);
                     done();
                 })
                 .catch((e) => {
