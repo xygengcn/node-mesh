@@ -16,3 +16,4 @@ test
 .env.js
 examples
 dist/src
+.husky
