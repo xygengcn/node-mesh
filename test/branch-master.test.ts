@@ -83,7 +83,6 @@ describe('客户端和服务端的绑定测试', () => {
             branch2
                 .request('node:clients')
                 .then((result) => {
-                    console.log(1111, result);
                     assert.equal(result.length, 2);
                 })
                 .catch((e) => {

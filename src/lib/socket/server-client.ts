@@ -1,5 +1,5 @@
 import BaseError from '@/lib/error';
-import { SocketType } from '@/typings/socket';
+import { SocketType, ClientSocketOptions } from '@/typings/socket';
 import { AddressInfo, Socket } from 'net';
 import ClientSocket from './client';
 /**
@@ -16,17 +16,18 @@ export default class ServerClientSocket extends ClientSocket {
      */
     private bindSetTimeout: NodeJS.Timeout | null;
 
-    constructor(serverId: string, socket: Socket) {
+    constructor(serverId: string, socket: Socket, options?: Partial<ClientSocketOptions>) {
         const addressInfo = socket.address() as AddressInfo;
-        const options = {
+        const defaultOptions = {
             port: addressInfo.port,
             host: addressInfo.address,
             type: SocketType.server,
             retry: false,
             clientId: serverId,
-            targetId: String(socket.remotePort)
+            targetId: String(socket.remotePort),
+            ...(options || {})
         };
-        super(options, socket);
+        super(defaultOptions, socket);
 
         // 开始计时
         this.bindSetTimeout = setTimeout(() => {

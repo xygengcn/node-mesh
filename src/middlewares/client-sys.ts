@@ -9,6 +9,14 @@ import { ClientMiddleware } from '@/typings/socket';
  * @returns
  */
 export default function clientSysMsgMiddleware(client: ClientSocket): ClientMiddleware {
+    // 注册心跳方法
+    client.response(SocketSysEvent.socketHeartbeat, (data) => {
+        client.debug('[heartbeat]', '收到心跳', data);
+        return {
+            ...data,
+            end: client.targetId
+        };
+    });
     return (ctx: Context, next) => {
         if (ctx.body) {
             const message = ctx.toJson() as SocketMessage<any, SocketSysEvent>;

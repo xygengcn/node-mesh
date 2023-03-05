@@ -53,6 +53,9 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     // 重连配置
     private retryTimeout: NodeJS.Timer | null = null;
 
+    // 心跳机制
+    private heartbeatInterval: NodeJS.Timer | null = null;
+
     // 手动关闭
     private isManualClose = false;
 
@@ -79,7 +82,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         if (socket && socket instanceof Socket) {
             this.socket = socket;
             this.status = 'binding';
-            this.listenSocketEvent();
+            this.initSocketEvent();
         } else {
             this.status = 'none';
             // 创建Socket
@@ -89,11 +92,11 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         // 绑定中间件
         this.use('connect', clientSocketBindMiddleware(this.options.secret));
 
-        // 处理消息
-        this.use('data', clientMessageMiddleware());
-
         // 处理系统消息
         this.use('data', clientSysMsgMiddleware(this));
+
+        // 处理消息
+        this.use('data', clientMessageMiddleware());
     }
 
     /**
@@ -164,7 +167,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         });
 
         // 绑定事件
-        this.listenSocketEvent();
+        this.initSocketEvent();
     }
 
     /**
@@ -402,10 +405,15 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
 
     /**
      * 返回所有动作的keys
+     *
+     * 忽略系统方法
      * @returns
      */
     public responseKeys(): string[] {
-        return Array.from(this.responseAction.keys());
+        const keys = Array.from(this.responseAction.keys());
+        return keys.filter((key) => {
+            return !/^socket:.+$/i.test(key);
+        });
     }
 
     /**
@@ -593,8 +601,11 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
     /**
      * 监听事件
      */
-    private listenSocketEvent() {
-        this.debug('[listenSocketEvent]', '开始绑定事件');
+    private initSocketEvent() {
+        this.debug('[initSocketEvent]', '开始绑定事件');
+
+        // 心跳
+        this.handleHeartbeat();
 
         // 保持活跃
         this.socket.setKeepAlive(true, 500);
@@ -720,6 +731,33 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         if (this.retryTimeout) {
             clearTimeout(this.retryTimeout);
             this.retryTimeout = null;
+        }
+    }
+
+    /**
+     * 心跳机制
+     */
+    private handleHeartbeat() {
+        // 移除定时
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+        if (this.options.heartbeat) {
+            this.heartbeatInterval = setInterval(() => {
+                if (this.status === 'online') {
+                    this.debug('[heartbeat]', '发起心跳');
+                    this.request(SocketSysEvent.socketHeartbeat, { start: this.clientId, socketId: this.getSocketId() })
+                        .then((result) => {
+                            this.debug('[heartbeat]', '心跳结果', result);
+                            this.emit('heartbeat', null, result);
+                        })
+                        .catch((e) => {
+                            this.logError('[heartbeat]', e);
+                            this.emit('heartbeat', e, null);
+                        });
+                }
+            }, this.options.heartbeat);
         }
     }
 }

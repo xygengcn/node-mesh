@@ -35,7 +35,8 @@ export enum SocketSysEvent {
     socketNotification = 'socket:notification', // 通用通知消息
     socketOnline = 'socket:online', // 其他客户端上线通知
     socketoffline = 'socket:offline', // 其他客户端下线通知
-    socketSub = 'socket:sub' // 客户端增加订阅
+    socketSub = 'socket:sub', // 客户端增加订阅
+    socketHeartbeat = 'socket:heartbeat' // 心跳
 }
 
 /**

@@ -454,7 +454,7 @@ export default class ServerSocket extends Emitter<ServerSocketEvent> {
 
     private handleClientConnect(socket: Socket) {
         // 建立客户端
-        const client = new ServerClientSocket(this.options.serverId, socket);
+        const client = new ServerClientSocket(this.options.serverId, socket, { heartbeat: this.options.heartbeat });
 
         this.log('[client-connnect]', '监听到客户端', 'socketId: ', client.getSocketId());
 

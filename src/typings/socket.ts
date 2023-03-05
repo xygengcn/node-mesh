@@ -85,6 +85,7 @@ export type ClientSocketEvent = NetSocketEvent & {
     message: (message: SocketMessage) => void; // 收到规范的消息了
     sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
     subscribe: (message: SubscribeMessage) => void; // 收到订阅的消息了
+    heartbeat: (error: Error | null, data: any) => void; // 心跳结果
 };
 
 /**
@@ -98,6 +99,7 @@ export type ServerSocketEvent = NetServerEvent & {
     sysMessage: (content: SocketSysMsgContent) => void; // 收到系统消息
     broadcast: (action: string | SocketSysEvent, content: SocketBroadcastMsgContent) => void; // 收到广播消息
     subscribe: (message: SubscribeMessage) => void; // 收到订阅的消息了
+    heartbeat: (error: Error | null, data: any) => void; // 心跳结果
 };
 
 /**
@@ -114,6 +116,7 @@ export interface ClientSocketOptions {
     timeout?: number; // 请求超时 default: 30000
     type?: SocketType; // 用来判断操作端是客户端还是服务端
     debug?: EmitterDebugEvent; // 日志
+    heartbeat?: number; // 心跳
 }
 
 /**
@@ -129,6 +132,7 @@ export interface ClientSocketBindOptions {
     responseActions: string[]; // 注册的动作
     subscription: string[]; // 注册的动作
     socketId: string; // socket 唯一值
+    heartbeat?: number; // 心跳
 }
 
 /**
@@ -147,6 +151,7 @@ export interface ServerSocketOptions {
     port: number; // 端口 default：31000
     timeout?: number; // 请求延迟,
     debug?: EmitterDebugEvent; // 日志
+    heartbeat?: number; // 心跳
 }
 
 /**
