@@ -1,6 +1,6 @@
 {
     "name": "node-mesh",
-    "version": "1.0.10",
+    "version": "1.0.11",
     "description": "Master - Branch 形式 Nodejs 微服务框架",
     "types": "dist/index.d.ts",
     "main": "dist/index.js",
@@ -65,7 +65,7 @@
         "amp": "^0.3.1",
         "amp-message": "^0.1.2",
         "eventemitter3": "^5.0.0",
-        "json-stringify-safe": "^5.0.1"
+        "serialize-error": "8.1.0"
     },
     "mocha": {
         "require": [

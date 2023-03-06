@@ -29,7 +29,8 @@ export default function serverBindMiddleware(server: ServerSocket): ClientMiddle
                 // 获取客户端
                 const client = server.clients.get(socketId);
                 if (!client) {
-                    server.logError('[server-bind]', new BaseError(30009, new Error(socketId + '客户端不存在')));
+                    server.logError('[server-bind]', new BaseError({code:30009,message:socketId + '客户端不存在',  cause: { bind }}));
+
                     return;
                 }
 
@@ -98,7 +99,7 @@ export default function serverBindMiddleware(server: ServerSocket): ClientMiddle
                     }
 
                     // 检验失败
-                    server.logError('[server-bind]', new BaseError(30009, new Error('auth验证失败', { cause: { bind } })));
+                    server.logError('[server-bind]', new BaseError({code:30009,message:'auth验证失败',  cause: { bind }}));
                     ctx.json<SocketSysMsgContent<ServerSocketBindResult>>({
                         event: SocketSysEvent.socketBind,
                         content: {
@@ -109,7 +110,7 @@ export default function serverBindMiddleware(server: ServerSocket): ClientMiddle
                 }
 
                 // 返回失败信息
-                server.logError('[server-bind]', new BaseError(30009, new Error('serverID验证失败', { cause: { bind } })));
+                server.logError('[server-bind]', new BaseError({code:30009,message:'serverID验证失败',  cause: { bind }}));
                 ctx.json<SocketSysMsgContent<ServerSocketBindResult>>({
                     event: SocketSysEvent.socketBind,
                     content: {

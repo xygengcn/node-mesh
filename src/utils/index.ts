@@ -1,6 +1,6 @@
 import { SocketMessage } from '@/typings/message';
 import Message from 'amp-message';
-import safeStringify from 'json-stringify-safe';
+import { deserializeError, serializeError } from 'serialize-error';
 /**
  * 生成随机字符串
  * @param length
@@ -41,35 +41,24 @@ export function parseJson(str: string | object): object {
         return {};
     }
 }
-
-/**
- * 解析对象
- * @param obj
- * @returns
- */
-export function stringify(obj: object): string {
-    return safeStringify(obj);
-}
-
 /**
  * 序列化错误对象
  * @param error
  */
 export function stringifyError(error: Error | null | undefined) {
     if (!error) return null;
-    if (error instanceof Error) {
-        const obj = {
-            message: error?.message,
-            name: error?.name,
-            cause: error?.stack,
-            stack: error?.stack,
-            code: (error as any).code
-        };
-        return safeStringify(obj);
-    }
-    return safeStringify({
-        message: error
-    });
+    return serializeError(error,{maxDepth:3})
+}
+
+/**
+ * 解析错误对象
+ * @param error 
+ * @returns 
+ */
+export function parseError(error:any){
+    if(!error) return null;
+    return deserializeError(error)
+
 }
 
 /**

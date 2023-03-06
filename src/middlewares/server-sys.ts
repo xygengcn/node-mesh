@@ -47,7 +47,7 @@ async function serverSysNotificationMsg(server: ServerSocket, message: SocketMes
                         client.unsubscribe(content.action);
                     }
                 } else {
-                    server.logError('[client-sub]', new BaseError(30017, '没找到客户端', content));
+                    server.logError('[client-sub]', new BaseError({code:30017,message: '没找到客户端', cause:{content}}));
                 }
             }
 

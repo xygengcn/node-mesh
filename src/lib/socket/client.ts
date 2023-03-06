@@ -4,7 +4,7 @@ import clientSysMsgMiddleware from '@/middlewares/client-sys';
 import { NotFunction } from '@/typings';
 import { SocketBroadcastMsg, SocketBroadcastMsgContent, SocketMessage, SocketMessageType, SocketSysEvent, SocketSysMsgSubscribeContent } from '@/typings/message';
 import { ClientMiddleware, ClientSocketEvent, ClientSocketOptions, ClientSocketStatus, SocketCallback, SocketResponseAction, SocketType } from '@/typings/socket';
-import { compose, msgUUID, parseMessage, stringifyError } from '@/utils';
+import { compose, msgUUID, parseError, parseMessage, stringifyError } from '@/utils';
 import { Stream } from 'amp';
 import Message from 'amp-message';
 import { Socket, AddressInfo } from 'net';
@@ -242,7 +242,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         }
 
         // 错误处理
-        this.logError('[request]', new BaseError(30002, '客户端请求失败', { action, params, status: this.status }));
+        this.logError('[request]', new BaseError({code:30002,message: '客户端请求失败', cause:{ action, params, status: this.status }}));
 
         // 返回失败
         this.emit('error', new BaseError(30002, "Socket isn't connect !"));
@@ -369,7 +369,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
      */
     public disconnect(error?: Error) {
         if (error) {
-            this.logError('[disconnect]', new BaseError(30014, error));
+            this.logError('[disconnect]', new BaseError({code:30014,message:error.message,cause:error.cause,name:error.name,stack:error.stack}))
         } else {
             this.debug('[disconnect]', '客户端断开，当前状态：', this.status);
         }
@@ -521,7 +521,7 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
                     this.log('[request-message-receive]', 'client收到消息回调:', msgId);
 
                     // 需要处理错误信息
-                    callback(error, ...result);
+                    callback(parseError(error), ...result);
                 });
             }
 
@@ -588,10 +588,10 @@ export default class ClientSocket extends Emitter<ClientSocketEvent> {
         const msgIds = msgs.map((msg) => msg.msgId);
         const message = new Message(msgs);
         this.log('[write]', '开始消息队列', msgIds);
-        this.socket.write(message.toBuffer(), (e) => {
-            if (e) {
-                this.logError('[write]', new BaseError(30004, e));
-                this.emit('error', new BaseError(30004, e));
+        this.socket.write(message.toBuffer(), (error) => {
+            if (error) {
+                this.logError('[write]',new BaseError({code:30004,message:error.message,cause:error.cause,name:error.name,stack:error.stack}));
+                this.emit('error',new BaseError({code:30004,message:error.message,cause:error.cause,name:error.name,stack:error.stack}));
                 return;
             }
             this.success('[write]', '消息队列发送成功', msgIds);

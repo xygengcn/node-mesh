@@ -1,7 +1,5 @@
-interface BaseErrorOptions extends Error {
-    code: number | string;
-    stack?: any;
-}
+interface BaseErrorOptions {code:number,message:string,cause:any,name?:string,stack?:unknown}
+
 /**
  * 基础错误
  */
@@ -9,29 +7,15 @@ export default class BaseError extends Error {
     // 错误代码
     public code!: number | string;
 
-    // 原始错误
-    public error!: Error | null;
+ 
 
     // 构造函数
-    constructor(code: string | number, error: Error | null | string, cause?: unknown) {
-        super(typeof error === 'string' ? error : error?.message, { cause: cause || (typeof error !== 'string' && error?.cause) });
-        if (error instanceof Error && (error as any).code) {
-            code = (error as any).code;
+    constructor(code:  number|BaseErrorOptions, message?:string) {
+        super(message);
+        if(typeof code ==="object"){
+            Object.assign(this,code)
+        }else{
+            this.code =code
         }
-        Object.assign(this, { code, error: error instanceof Error ? error.message : error });
-    }
-
-    // 转换成数据
-    public toJson(): BaseErrorOptions | null {
-        if (!this.error) {
-            return null;
-        }
-        return {
-            code: this.code,
-            stack: this.stack,
-            name: this.name,
-            cause: this.cause,
-            message: this.message
-        };
     }
 }

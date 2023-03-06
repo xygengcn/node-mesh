@@ -1,8 +1,12 @@
 # Master - Branch 形式 Nodejs 微服务框架
 
-## 用法(Usage)
+## 一、用法(Usage)
 
-### Request - Response
+Master 和 Branch 可以是不同文件的不同进程，为了方便示例，都放在同一个文件
+
+### 1、 Request - Response
+
+---
 
 ```ts
 import { Master, Branch } from 'node-mesh';
@@ -56,13 +60,37 @@ masterReq.add2(44, 44).then((result) => {
 });
 ```
 
-## 原理(Design)
+### 2、Subscribe - Publish
 
-### 客户端与服务端绑定(bind)
+---
+
+```ts
+import { Master, Branch } from 'node-mesh';
+
+const master1 = new Master('master1', { port: 3010 });
+
+const branch1 = new Branch('branch1', { port: 3010, master: 'master1' });
+
+// Subscribe
+master1.subscribe('sub/test', (error, content) => {
+    console.log(555, content); // content === sub
+});
+
+// Publish
+branch1.publish('sub/test', 'sub');
+```
+
+## 二、原理(Design)
+
+### 1、客户端与服务端绑定(bind)
+
+---
 
 客户端与服务端建立 connect，客户端发出绑定通知，服务端接收绑定通知，校验返回结果，完成绑定
 
-### 单主分支(branch)
+### 2、单主分支(branch)
+
+---
 
 master 启动 -》 branch 建立链接 -》 注册 action 到 master 缓存 -》 通知其他分支上线
 
@@ -70,7 +98,7 @@ master 启动 -》 branch 建立链接 -》 注册 action 到 master 缓存 -》
 
 分支下线 -》 清除 master 上的分支 action 缓存 -》 通知其他分支下线
 
-## 错误列表(Error)
+## 三、错误列表(Error)
 
 | code  | 说明                               |     |
 | ----- | ---------------------------------- | --- |

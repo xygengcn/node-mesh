@@ -31,7 +31,7 @@ export default class ServerClientSocket extends ClientSocket {
 
         // 开始计时
         this.bindSetTimeout = setTimeout(() => {
-            this.disconnect(new BaseError(30016, '客户端绑定超时', { socketId: this.getSocketId() }));
+            this.disconnect(new BaseError({code:30016,message:'客户端绑定超时',cause:{ socketId: this.getSocketId() }} ));
             this.clearBindSetTimeout();
         }, 2000);
     }
