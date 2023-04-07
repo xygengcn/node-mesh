@@ -1,6 +1,6 @@
 import ServerSocket from '@/lib/socket/server';
 import { SocketBroadcastMsgContent } from '@/typings';
-import { NodeAction, NodeSysAction, NodeActionFunctionParam, NodeActionPromise, NodeActionResult, NodeEmitKey, NodeOnListener } from '@/typings/node';
+import { NodeAction, NodeSysAction, NodeActionFunctionParam, NodeActionPromise, NodeActionResult, NodeEmitKey, NodeOnListener, Promisify } from '@/typings/node';
 import { ClientSocketEvent, ServerSocketEvent, SocketCallback, SocketResponseAction, SocketType } from '@/typings/socket';
 import { EmitterDebugEvent } from '../emitter';
 import BaseError from '../error';
@@ -69,8 +69,8 @@ export default class Node<Action extends NodeAction, Type extends SocketType> {
     public request<K extends keyof NodeSysAction = keyof NodeSysAction>(
         action: K,
         ...params: NodeActionFunctionParam<NodeSysAction, K>
-    ): Promise<NodeActionResult<NodeSysAction, K>>;
-    public request<K extends keyof NodeAction = keyof NodeAction>(action: K, ...params: NodeActionFunctionParam<Action, K>): Promise<NodeActionResult<Action, K>>;
+    ): Promisify<NodeActionResult<NodeSysAction, K>>;
+    public request<K extends keyof NodeAction = keyof NodeAction>(action: K, ...params: NodeActionFunctionParam<Action, K>): Promisify<NodeActionResult<Action, K>>;
     public request(action, ...params) {
         return this.socket.request(action, ...params);
     }

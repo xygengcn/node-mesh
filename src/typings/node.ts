@@ -1,6 +1,8 @@
 import { ClientSocketStatus } from '@/typings/socket';
 import { EmitterDebugEvent } from '@/lib/emitter';
 
+export type Promisify<T> = T extends Promise<any> ? T : Promise<T>;
+
 /**
  * 节点动作
  */
