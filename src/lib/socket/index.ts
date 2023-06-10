@@ -1,7 +1,7 @@
 import CustomError, { CustomErrorCode } from '@/error';
 import net, { AddressInfo } from 'net';
 import { IMessage, Message, isMessage } from '../message';
-import { PackrStream, UnpackrStream } from 'msgpackr';
+import { PackrStream, UnpackrStream } from 'msgpackr-node';
 import { unpackBufToMessage } from '@/utils';
 /**
  * socket自定义事件

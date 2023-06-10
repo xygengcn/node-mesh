@@ -1,7 +1,7 @@
-import Queue from 'p-queue';
 import { Message } from '@/lib/message';
 import Socket from '@/lib/socket';
-import { pack } from 'msgpackr';
+import { pack } from 'msgpackr-node';
+import Queue, { IQueue } from '@/utils/queue';
 
 export interface ISenderOptions {
     // 最多压缩多少条消息发送
@@ -26,7 +26,7 @@ export default class Sender {
     /**
      * 队列
      */
-    public sendMessageQueue: Queue;
+    public sendMessageQueue: IQueue;
 
     constructor(options: ISenderOptions, socket: Socket) {
         this.options = options;

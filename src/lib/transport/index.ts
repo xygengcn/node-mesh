@@ -7,7 +7,7 @@ import { isClassInstance } from '@/utils';
 import { Message, MessageSource, MessageSysAction, MessageType, isCallbackMessage, isSysMessage } from '../message';
 import MiddlewareManager, { MiddlewareClass, MiddlewareFunction } from '../middleware';
 import Subscriber from '../subscriber';
-import Queue from 'p-queue';
+import Queue, { IQueue } from '@/utils/queue';
 
 export interface ITransportOptions extends ISenderOptions, IRequestOptions {
     namespace: string;
@@ -51,7 +51,7 @@ export class Transport {
     /**
      * 队列
      */
-    public onMessageHandlerQueue: Queue;
+    public onMessageHandlerQueue: IQueue;
 
     // 消息缓存
     private messageManager: Array<Message> = [];

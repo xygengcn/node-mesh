@@ -1,6 +1,6 @@
 {
     "name": "node-mesh",
-    "version": "2.0.0",
+    "version": "2.0.3",
     "description": "Master - Branch 形式 Nodejs 微服务框架",
     "types": "dist/index.d.ts",
     "main": "dist/index.js",
@@ -11,7 +11,8 @@
         "test": "mocha test/**/**.test.ts --timeout=5000",
         "dev": "nodemon --inspect=9229 ./examples/socket/index.ts",
         "pref:server": "nodemon test/pref/server.ts ",
-        "pref": "npm run pref:server & npx mocha --exit test/pref/client.ts -t=100000"
+        "pref": "npm run pref:server & npx mocha --exit test/pref/client.ts -t=100000",
+        "prepublish": "npm run build"
     },
     "homepage": "https://github.com/xygengcn/node-mesh",
     "repository": {
@@ -45,7 +46,6 @@
         "husky": "^8.0.3",
         "mocha": "^10.2.0",
         "nodemon": "^2.0.15",
-        "picocolors": "^1.0.0",
         "prettier": "^2.5.1",
         "rollup": "^3.6.0",
         "rollup-plugin-ts": "^3.2.0",
@@ -56,11 +56,12 @@
         "typescript": "^5.0.4"
     },
     "dependencies": {
-        "eventemitter3": "^5.0.1",
-        "inversify": "^6.0.1",
-        "msgpackr": "^1.9.1",
-        "p-queue": "6",
-        "reflect-metadata": "^0.1.13",
+        "eventemitter3": "5.0.1",
+        "inversify": "6.0.1",
+        "msgpackr-node": "^1.9.5",
+        "p-queue": "6.6.2",
+        "picocolors": "^1.0.0",
+        "reflect-metadata": "0.1.13",
         "serialize-error": "8.1.0",
         "uid": "^2.0.2"
     },

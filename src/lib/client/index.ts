@@ -206,7 +206,7 @@ export default class Client extends EventEmitter<IClientEvent> {
             this.transport.subscriber.sub(action, callback);
         }
         // 如果上线了再通知服务端
-        if (this.socket.status === SocketStatus.online) {
+        if (this.socket?.status === SocketStatus.online) {
             this.register();
         }
         return;

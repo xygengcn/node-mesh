@@ -4,6 +4,7 @@ import Client, { IClientEvent, IClientOptions } from '@/lib/client';
 import { Callback, Constructor } from '@/typings';
 import { MiddlewareFunction } from '@/lib/middleware';
 import { EmitterDebugLevel } from '@/emitter';
+import { IHandler } from '@/lib/responder/handler';
 
 /**
  * 通信者身份
@@ -88,7 +89,7 @@ export default class Node<NodeResponder extends NodeAction, Type extends NodeTyp
     /**
      * 订阅者
      */
-    public subscribe(action: string, cb: Callback) {
+    public subscribe(action: string, cb: IHandler<void>) {
         return this.socket.subscribe(action, cb);
     }
 

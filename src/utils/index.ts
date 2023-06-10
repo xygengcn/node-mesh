@@ -1,5 +1,5 @@
 import { IMessage } from '@/lib/message';
-import { unpack } from 'msgpackr';
+import { unpack } from 'msgpackr-node';
 import { deserializeError, serializeError } from 'serialize-error';
 
 /**
