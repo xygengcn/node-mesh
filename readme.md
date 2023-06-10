@@ -25,7 +25,7 @@ const actions2 = {
 
 const master1 = new Master<typeof actions & typeof actions2>('master1', { port: 3010 });
 
-const branch1 = new Branch<typeof actions & typeof actions2>('branch1', { port: 3010, master: 'master1' });
+const branch1 = new Branch<typeof actions & typeof actions2>('branch1', { port: 3010 });
 
 // 批量注册方法
 master1.createResponder(actions2);
@@ -100,9 +100,15 @@ master 启动 -》 branch 建立链接 -》 注册 action 到 master 缓存 -》
 
 ## 三、错误列表(Error)
 
-| code | 说明           |     |
-| ---- | -------------- | --- |
-| 0    | 成功           |     |
-| 1    | 未知错误       |     |
-| 2    | 请求超时       |     |
-| 3    | 客户端绑定失败 |     |
+```ts
+export enum CustomErrorCode {
+    success = 0, // 成功
+    none = 1, // 未知
+    requestTimeout = 2, // 请求超时
+    bindError = 3, // 绑定失败
+    requestParamsError = 4, // 请求参数问题
+    bindTimeout = 5, // 绑定超时
+    actionNotExist = 6, // 动作不存在
+    actionSocketNotActive = 7 // socket不在线或者不存在
+}
+```
