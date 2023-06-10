@@ -3,6 +3,7 @@ import Connection from './connection';
 import { type Transport } from '@/lib/transport';
 import { Message } from '@/lib/message';
 import { isFunction } from '@/utils';
+import ArraySet from '@/utils/set';
 
 /**
  * 服务端连接管理
@@ -15,7 +16,7 @@ export default class ConnectionManager {
     public nameBindIdManager: Map<string, string> = new Map();
 
     // 订阅绑定
-    public subscribeBindIdManager: Map<string, Set<string>> = new Map();
+    public subscribeBindIdManager: Map<string, ArraySet<string>> = new Map();
 
     // 创建连接
     public createConnection(socket: Socket, transport: Transport) {
@@ -49,8 +50,8 @@ export default class ConnectionManager {
      * @param name
      * @returns
      */
-    public findConnectionIdsBySubscribe(name: string): string[] {
-        return Array.from(this.subscribeBindIdManager.get(name) || []);
+    public findConnectionIdsBySubscribe(name: string): ArraySet<string> {
+        return this.subscribeBindIdManager.get(name) || new ArraySet();
     }
 
     /**
@@ -106,7 +107,7 @@ export default class ConnectionManager {
      */
     public bindSubscribe(sub: string, remoteId: string) {
         if (this.idBindConnectionManager.has(remoteId)) {
-            const idSet = this.subscribeBindIdManager.get(sub) || new Set();
+            const idSet = this.subscribeBindIdManager.get(sub) || new ArraySet();
             idSet.add(remoteId);
             this.subscribeBindIdManager.set(sub, idSet);
         }

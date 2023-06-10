@@ -38,8 +38,9 @@ describe('客户端和服务端的发布订阅测试', () => {
         client1.$off('subscribe');
         client2.$off('subscribe');
         client3.$off('subscribe');
+        server.$off('notification');
     });
-    it('服务端发布,客户端订阅', (done) => {
+    it('1、服务端发布,客户端订阅', (done) => {
         const done2 = doneTimes(2, done);
         const sub = doneTimes(2, () => {
             server.publish('sub/test', 'sub1');
@@ -65,7 +66,7 @@ describe('客户端和服务端的发布订阅测试', () => {
         });
     });
 
-    it('客户端1发布,服务端订阅,其他端收不到', (done) => {
+    it('2、客户端1发布,服务端订阅,其他端收不到', (done) => {
         client1.$once('subscribe', () => {
             assert.fail('不订阅也收到了');
         });
@@ -82,18 +83,18 @@ describe('客户端和服务端的发布订阅测试', () => {
         client1.publish('sub/test2', 'sub2');
     });
 
-    it('客户端1发布,客户端2订阅，其他收不到', (done) => {
+    it('3、客户端1发布,客户端2订阅，其他收不到', (done) => {
         client1.$once('subscribe', () => {
             assert.fail('不订阅也收到了');
         });
-        client2.$once('subscribe', () => {
+        client3.$once('subscribe', () => {
             assert.fail('不订阅也收到了');
         });
         server.$once('subscribe', () => {
             assert.fail('不订阅也收到了');
         });
         // 后订阅
-        client3.subscribe('sub/test3', (content) => {
+        client2.subscribe('sub/test3', (content) => {
             assert.equal(content, 'sub3');
             done();
         });
@@ -104,7 +105,7 @@ describe('客户端和服务端的发布订阅测试', () => {
         });
     });
 
-    it('服务端发布，服务端订阅，其他收不到', (done) => {
+    it('4、服务端发布，服务端订阅，其他收不到', (done) => {
         client1.$once('subscribe', () => {
             done('不订阅也收到了');
         });
@@ -120,5 +121,29 @@ describe('客户端和服务端的发布订阅测试', () => {
             done();
         });
         server.publish('sub/test4', 'sub4');
+    });
+
+    it('5、客户端1订阅，客户端1发布，其他人收不到', (done) => {
+        server.$once('subscribe', () => {
+            done('不订阅也收到了');
+        });
+        client2.$once('subscribe', () => {
+            done('不订阅也收到了');
+        });
+        client3.$once('subscribe', () => {
+            done('不订阅也收到了');
+        });
+
+        // 后端订阅
+        client1.subscribe('sub/test5', (content) => {
+            assert.equal(content, 'sub5');
+            done();
+        });
+
+        server.$on('notification', (message) => {
+            if (message.action === MessageSysAction.register) {
+                client1.publish('sub/test5', 'sub5');
+            }
+        });
     });
 });

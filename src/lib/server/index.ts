@@ -304,7 +304,7 @@ export default class Server extends EventEmitter<IServerEvent> {
             // 通知订阅的客户端
             const connectionIds = this.connectionManager.findConnectionIdsBySubscribe(action);
             const message = Message.createPublishMessage(action, ...args);
-            this.connectionManager.broadcast(message, connectionIds);
+            this.connectionManager.broadcast(message, connectionIds.toArray());
         }
 
         return;
@@ -332,6 +332,17 @@ export default class Server extends EventEmitter<IServerEvent> {
             this.subscriber.sub(action, callback);
         }
         return;
+    }
+
+    /**
+     * 取消订阅
+     * @param action
+     * @returns
+     */
+    public unsubscribe(action: string) {
+        if (!isString(action)) return;
+        this.$log('[subscribe]', action);
+        this.subscriber.unsub(action);
     }
 
     /**

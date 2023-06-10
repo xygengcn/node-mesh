@@ -94,6 +94,13 @@ export default class Node<NodeResponder extends NodeAction, Type extends NodeTyp
     }
 
     /**
+     * 取消订阅者
+     */
+    public unsubscribe(action: string) {
+        return this.socket.unsubscribe(action);
+    }
+
+    /**
      * 广播
      * @param action
      * @param content

@@ -213,6 +213,17 @@ export default class Client extends EventEmitter<IClientEvent> {
     }
 
     /**
+     * 取消订阅
+     * @param action
+     * @returns
+     */
+    public unsubscribe(action: string) {
+        if (!isString(action)) return;
+        this.$log('[subscribe]', action);
+        this.transport.subscriber.unsub(action);
+    }
+
+    /**
      * 广播能力
      *
      * 只能广播通知消息
