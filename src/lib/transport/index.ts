@@ -14,7 +14,7 @@ export interface ITransportOptions extends ISenderOptions, IRequestOptions {
     // 回调并发处理
     handlerConcurrency?: number;
 
-    // 10s心跳
+    // 5分钟心跳
     heartbeat?: number;
 }
 
@@ -199,7 +199,7 @@ export class Transport {
             message.setAction(MessageSysAction.heartbeat);
             message.setParams(this.options.namespace);
             this.request(message, callback);
-        }, this.options.heartbeat || 10000);
+        }, this.options.heartbeat || 5 * 60 * 1000);
     }
 
     /**

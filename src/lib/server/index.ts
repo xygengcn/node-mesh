@@ -37,7 +37,7 @@ export interface IServerOptions {
     logger?: boolean;
     // 请求超时
     timeout?: number;
-    // 10s心跳
+    // 5分钟心跳
     heartbeat?: number;
 }
 
@@ -304,7 +304,7 @@ export default class Server extends EventEmitter<IServerEvent> {
             // 通知订阅的客户端
             const connectionIds = this.connectionManager.findConnectionIdsBySubscribe(action);
             const message = Message.createPublishMessage(action, ...args);
-            this.connectionManager.broadcast(message, connectionIds.toArray());
+            this.connectionManager.broadcast(message, connectionIds);
         }
 
         return;

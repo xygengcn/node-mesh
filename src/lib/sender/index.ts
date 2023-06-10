@@ -64,6 +64,7 @@ export default class Sender {
             // 设置发送者和接收者
             message.setTarget(this.socket.remoteId());
             message.setFrom(this.socket.localId());
+            message.setFromName(this.socket.name);
             return message.toRaw();
         });
         // 发送消息

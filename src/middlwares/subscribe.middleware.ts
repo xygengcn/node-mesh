@@ -43,9 +43,8 @@ export default class SubscribeMiddleware implements MiddlewareClass {
                 }
                 // 通知订阅的客户端
                 const connectionIds = server.connectionManager.findConnectionIdsBySubscribe(message.action);
-                connectionIds.delete(id);
                 const pushMessage = Message.createPublishMessage(message.action, ...(message.params || []));
-                server.connectionManager.broadcast(pushMessage, connectionIds.toArray());
+                server.connectionManager.broadcast(pushMessage, connectionIds, [id]);
             }
         };
     }

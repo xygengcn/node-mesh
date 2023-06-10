@@ -35,7 +35,7 @@ export interface IClientOptions {
     timeout?: number;
     // 重连
     retryDelay?: number;
-    // 10s心跳
+    // 5分钟心跳
     heartbeat?: number;
 }
 
@@ -271,6 +271,9 @@ export default class Client extends EventEmitter<IClientEvent> {
         // 初始
         this.socket = new Socket();
 
+        // 绑定名字
+        this.socket.bindName(this.options.namespace);
+
         // 来消息了
         this.socket.$on('message', (message) => {
             this.$log('[message]', message.id, message.action);
@@ -279,7 +282,7 @@ export default class Client extends EventEmitter<IClientEvent> {
 
         // 发消息
         this.socket.$on('send', (messages) => {
-            this.$log('[send]');
+            this.$log('[send]', messages);
             this.$emit('send', messages);
         });
 

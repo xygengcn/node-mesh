@@ -48,6 +48,11 @@ export default class Socket extends net.Socket {
     private bindSetTimeout!: NodeJS.Timeout | null;
 
     /**
+     * 名字
+     */
+    public name: string;
+
+    /**
      * 状态
      */
     public readonly status: SocketStatus = SocketStatus.none;
@@ -138,9 +143,16 @@ export default class Socket extends net.Socket {
     /**
      * 更新状态
      */
-    public updateStatus(status) {
+    public updateStatus(status: SocketStatus) {
         Reflect.set(this, 'status', status);
         this.$emit('status', this.status);
+    }
+
+    /**
+     * 更新状态
+     */
+    public bindName(name: string) {
+        this.name = name;
     }
 
     /**

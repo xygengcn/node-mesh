@@ -54,6 +54,8 @@ export interface IMessage<T = any[], B = any> {
     fromId: string;
     // 接受者
     targetId: string;
+    //  发送者自定义名字
+    fromName: string;
 }
 
 /**
@@ -174,6 +176,11 @@ export class Message<T extends IMessage = IMessage> {
      */
     public readonly targetId: string;
 
+    /**
+     * 名字
+     */
+    public readonly fromName: string;
+
     constructor(message?: IMessage) {
         if (message) {
             this.id = message.id;
@@ -185,6 +192,7 @@ export class Message<T extends IMessage = IMessage> {
             this.source = message.source;
             this.fromId = message.fromId;
             this.targetId = message.targetId;
+            this.fromName = message.fromName;
         }
     }
 
@@ -265,6 +273,17 @@ export class Message<T extends IMessage = IMessage> {
         }
         return this;
     }
+    /**
+     * 设置发送者
+     * @param name
+     * @returns
+     */
+    public setFromName(name: string) {
+        if (name) {
+            Reflect.set(this, 'fromName', name);
+        }
+        return this;
+    }
 
     /**
      * 返回原生消息
@@ -276,6 +295,7 @@ export class Message<T extends IMessage = IMessage> {
             type: this.type,
             source: this.source,
             fromId: this.fromId,
+            fromName: this.fromName,
             targetId: this.targetId,
             content: {
                 action: this.action,

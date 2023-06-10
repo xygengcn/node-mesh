@@ -50,8 +50,8 @@ export default class ConnectionManager {
      * @param name
      * @returns
      */
-    public findConnectionIdsBySubscribe(name: string): ArraySet<string> {
-        return this.subscribeBindIdManager.get(name) || new ArraySet();
+    public findConnectionIdsBySubscribe(name: string): Array<string> {
+        return this.subscribeBindIdManager.get(name)?.toArray() || [];
     }
 
     /**
@@ -74,11 +74,14 @@ export default class ConnectionManager {
      * @param ids
      * @param message
      */
-    public broadcast(message: Message, ids?: string[] | ((connection: Connection) => boolean)) {
+    public broadcast(message: Message, ids?: string[] | ((connection: Connection) => boolean), filter?: string[]) {
         // 传入id
         if (ids) {
             if (Array.isArray(ids)) {
                 ids.forEach((id) => {
+                    if (filter?.includes(id)) {
+                        return;
+                    }
                     const connection = this.findConnectionById(id);
                     connection?.transport.send(message);
                 });
@@ -145,6 +148,8 @@ export default class ConnectionManager {
     public bindName(name: string, id: string) {
         if (this.idBindConnectionManager.has(id)) {
             this.nameBindIdManager.set(name, id);
+            const connection = this.idBindConnectionManager.get(id);
+            connection.socket.bindName(name);
         }
     }
 
