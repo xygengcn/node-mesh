@@ -1,0 +1,12 @@
+/**
+ * 常量
+ */
+
+export const CONSTANT_KEY = {
+    MIDDLEWARE_CLIENT: Symbol('MIDDLEWARE_CLIENT'), // 客户端注入
+    MIDDLEWARE_SERVER: Symbol('MIDDLEWARE_SERVER'), // 服务端注入
+    MIDDLEWARE_TRANSPORT: Symbol('MIDDLEWARE_TRANSPORT'), // 服务注入
+    MIDDLEWARE_INJECT: Symbol('MIDDLEWARE_INJECT'), // 服务注入
+    MIDDLEWARE_EVENT: Symbol('MIDDLEWARE_EVENT'), // 事件注入
+    MIDDLEWARE_BIND_PROPERTYKEY: 'bind' // bind函数参数
+};

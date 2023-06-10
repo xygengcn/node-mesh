@@ -17,3 +17,4 @@ test
 examples
 dist/src
 .husky
+doc.md

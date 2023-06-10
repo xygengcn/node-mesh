@@ -1,5 +1,4 @@
-const typescript = require('rollup-plugin-typescript2');
-const dts = require('rollup-plugin-dts');
+const typescript = require('rollup-plugin-ts');
 const tscAlias = require('rollup-plugin-tsc-alias');
 
 module.exports = [
@@ -22,18 +21,6 @@ module.exports = [
                 tsconfig: './tsconfig.build.json'
             }),
             tscAlias()
-        ]
-    },
-    {
-        input: 'dist/src/index.d.ts',
-        output: [{ file: 'dist/index.d.ts', format: 'es' }],
-        plugins: [
-            dts.default({
-                compilerOptions: {
-                    emitDeclarationOnly: true,
-                    resolveJsonModule: true
-                }
-            })
         ]
     }
 ];

@@ -1,64 +1,37 @@
-import { SocketMessage } from '@/typings/message';
-import Message from 'amp-message';
+import { IMessage } from '@/lib/message';
+import { unpack } from 'msgpackr';
 import { deserializeError, serializeError } from 'serialize-error';
-/**
- * 生成随机字符串
- * @param length
- * @returns
- */
-export function uuid(length?: number): string {
-    length = length || 10;
-    const chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';
-    const maxPos = chars.length;
-    let pwd = '';
-    for (let i = 0; i < length; i++) {
-        pwd += chars.charAt(Math.floor(Math.random() * maxPos));
-    }
-    return pwd;
-}
 
 /**
- * 消息id
- * @param clientId
+ * 解压数据
+ * @param buf
  * @returns
  */
-export function msgUUID(id: string) {
-    return `${id}-${new Date().getTime()}-${uuid()}`;
-}
-
-/**
- * 字符串解析
- * @param str
- * @returns
- */
-export function parseJson(str: string | object): object {
-    if (typeof str === 'object') {
-        return str;
-    }
+export function unpackBufToMessage(buf: Buffer): IMessage[] {
     try {
-        return JSON.parse(str);
+        return unpack(buf);
     } catch (error) {
-        return {};
+        return null;
     }
 }
+
 /**
  * 序列化错误对象
  * @param error
  */
-export function stringifyError(error: Error | null | undefined) {
+export function stringifyError(error: any) {
     if (!error) return null;
-    return serializeError(error,{maxDepth:3})
+    return serializeError(error, { maxDepth: 3 });
 }
 
 /**
  * 解析错误对象
- * @param error 
- * @returns 
+ * @param error
+ * @returns
  */
-export function parseError(error:any){
-    if(!error) return null;
-    return deserializeError(error)
-
+export function parseError(error: any) {
+    if (!error) return null;
+    return deserializeError(error);
 }
 
 /**
@@ -66,12 +39,13 @@ export function parseError(error:any){
  * @param middlewares
  * @returns
  */
-export function compose(middlewares: Array<Function>) {
+export function compose(...middlewares: Array<Function>) {
     return function (arg: any) {
         return dispatch(0);
         function dispatch(i: number) {
             let fn = middlewares[i];
             if (!fn) {
+                arg = null;
                 return Promise.resolve();
             }
             return Promise.resolve(
@@ -84,11 +58,53 @@ export function compose(middlewares: Array<Function>) {
 }
 
 /**
- * 解析消息体
+ * 是不是对象
+ * @param obj
  * @returns
  */
-export function parseMessage(data: Buffer | unknown): SocketMessage[] {
-    const messages = data && new Message(data);
-    const msgs: SocketMessage[] = messages?.args;
-    return msgs.filter((msg) => typeof msg === 'object' && msg.msgId);
+export function isObject(obj: any): boolean {
+    return typeof obj === 'object';
+}
+
+/**
+ * 是不是函数
+ * @param func
+ * @returns
+ */
+export function isFunction(func: any): boolean {
+    return func && typeof func === 'function';
+}
+
+/**
+ * 是不是字符串
+ * @param str
+ * @returns
+ */
+export function isString(str: any): boolean {
+    return str && typeof str === 'string';
+}
+
+/**
+ * 是不是class
+ * @param input
+ * @returns
+ */
+export function isClass(input: unknown) {
+    if (isFunction(input)) {
+        return /^class /.test(Function.prototype.toString.call(input));
+    } else {
+        return false;
+    }
+}
+
+/**
+ * 类实例
+ * @param instance
+ * @returns
+ */
+export function isClassInstance(instance: any) {
+    if (isObject(instance) && instance.constructor) {
+        return isClass(instance.constructor);
+    }
+    return false;
 }

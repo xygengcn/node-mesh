@@ -1,6 +1,12 @@
-export * from './message';
-export * from './socket';
-export * from './node';
+/**
+ * 回调
+ */
+export type Callback<T = any> = (error: Error | null, content: T) => void;
+
+/**
+ * 类
+ */
+export type Constructor<T = any> = new (...args: any[]) => T;
 
 /**
  * 函数之外

@@ -1,6 +1,6 @@
 {
     "name": "node-mesh",
-    "version": "1.0.11",
+    "version": "2.0.0",
     "description": "Master - Branch 形式 Nodejs 微服务框架",
     "types": "dist/index.d.ts",
     "main": "dist/index.js",
@@ -8,14 +8,10 @@
     "scripts": {
         "husky": "husky install",
         "build": "rm -rf ./dist && rollup -c rollup.config.js",
-        "dev:s": "env-cmd -r .env.js -e development nodemon examples/server.dev.ts",
-        "dev:c": "env-cmd -r .env.js -e development nodemon examples/client.dev.ts",
-        "dev:m": "env-cmd -r .env.js -e development nodemon examples/master.dev.ts",
-        "dev:b": "env-cmd -r .env.js -e development nodemon examples/branch.dev.ts",
-        "dev:u": "env-cmd -r .env.js -e development nodemon examples/utils.dev.ts",
-        "test": "env-cmd -r .env.js -e test mocha test/**.test.ts -t=5000",
-        "test:dev": "env-cmd -r .env.js -e development mocha test/**.test.ts",
-        "pref": "env-cmd -r .env.js -e test mocha test/pref/pref.test.ts -t=100000"
+        "test": "mocha test/**/**.test.ts --timeout=5000",
+        "dev": "nodemon --inspect=9229 ./examples/socket/index.ts",
+        "pref:server": "nodemon test/pref/server.ts ",
+        "pref": "npm run pref:server & npx mocha --exit test/pref/client.ts -t=100000"
     },
     "homepage": "https://github.com/xygengcn/node-mesh",
     "repository": {
@@ -45,27 +41,28 @@
         "@types/mocha": "^10.0.1",
         "@types/node": "^16.11.12",
         "assert": "^2.0.0",
-        "colors": "^1.4.0",
-        "env-cmd": "^10.1.0",
         "eslint": "^8.4.1",
         "husky": "^8.0.3",
-        "mocha": "^10.1.0",
+        "mocha": "^10.2.0",
         "nodemon": "^2.0.15",
+        "picocolors": "^1.0.0",
         "prettier": "^2.5.1",
         "rollup": "^3.6.0",
-        "rollup-plugin-dts": "^5.0.0",
+        "rollup-plugin-ts": "^3.2.0",
         "rollup-plugin-tsc-alias": "^1.1.2",
-        "rollup-plugin-typescript2": "^0.34.1",
         "ts-node": "^10.4.0",
         "tsc-alias": "^1.6.3",
         "tsconfig-paths": "^3.12.0",
-        "typescript": "^4.5.3"
+        "typescript": "^5.0.4"
     },
     "dependencies": {
-        "amp": "^0.3.1",
-        "amp-message": "^0.1.2",
-        "eventemitter3": "^5.0.0",
-        "serialize-error": "8.1.0"
+        "eventemitter3": "^5.0.1",
+        "inversify": "^6.0.1",
+        "msgpackr": "^1.9.1",
+        "p-queue": "6",
+        "reflect-metadata": "^0.1.13",
+        "serialize-error": "8.1.0",
+        "uid": "^2.0.2"
     },
     "mocha": {
         "require": [

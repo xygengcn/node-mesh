@@ -41,22 +41,22 @@ const branchReq = branch1.createRequester();
 
 // 请求
 branchReq.add(11, 11).then((result) => {
-    console.log('111', result); // 22
+    console.log('result1', result); // 22
 });
 
 // 请求
 branchReq.add2(22, 22).then((result) => {
-    console.log('222', result); // 45
+    console.log('result2', result); // 45
 });
 
 // 请求
 masterReq.add(33, 33).then((result) => {
-    console.log('333', result); // 66
+    console.log('result3', result); // 66
 });
 
 // 请求
 masterReq.add2(44, 44).then((result) => {
-    console.log('444', result); // 89
+    console.log('result4', result); // 89
 });
 ```
 
@@ -100,22 +100,9 @@ master 启动 -》 branch 建立链接 -》 注册 action 到 master 缓存 -》
 
 ## 三、错误列表(Error)
 
-| code  | 说明                               |     |
-| ----- | ---------------------------------- | --- |
-| 30001 | Action 不为 string，或者不存在     |     |
-| 30002 | 客户端未连接上服务端               |     |
-| 30003 | 请求操时                           |     |
-| 30004 | socket write 写入失败              |     |
-| 30005 |                                    |     |
-| 30006 | 请求客户端过程，服务端未启动       |     |
-| 30007 | 请求客户端过程，客户端不在线       |     |
-| 30008 | 客户端绑定过程，服务端类型错误     |     |
-| 30009 | 客户端绑定失败回调                 |     |
-| 30010 | 服务端端口为空                     |     |
-| 30011 | 注册方法不可修改                   |     |
-| 30012 | 服务端广播消息，服务器未启动       |     |
-| 30013 |                                    |     |
-| 30014 | 客户端断开连接                     |     |
-| 30015 | 客户端发消息缺失参数               |     |
-| 30016 | 链接后，客户端不发起绑定，超时处理 |     |
-| 30017 | 客户端增加订阅，服务端处理失败     |     |
+| code | 说明           |     |
+| ---- | -------------- | --- |
+| 0    | 成功           |     |
+| 1    | 未知错误       |     |
+| 2    | 请求超时       |     |
+| 3    | 客户端绑定失败 |     |

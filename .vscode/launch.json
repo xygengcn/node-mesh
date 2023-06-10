@@ -6,6 +6,15 @@
             "name": "Run Dev",
             "request": "launch",
             "type": "node-terminal"
+        },
+        {
+            "command": "npx mocha test/socket/connect.test.ts",
+            "name": "Run Test Module",
+            "request": "launch",
+            "type": "node-terminal",
+            "env": {
+                "NODE_ENV": "development"
+            }
         }
     ]
 }
