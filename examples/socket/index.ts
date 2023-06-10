@@ -31,7 +31,3 @@ client.request('server-action', [1, 2, 3], (error, result) => {
 server.request('server-action', [1, 2, 3], (error, result) => {
     console.log('server-to-self', error, result);
 });
-
-setTimeout(() => {
-    server.connectionManager.end(client.socket.localId());
-}, 2000);

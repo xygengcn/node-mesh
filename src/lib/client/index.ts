@@ -345,15 +345,8 @@ export default class Client extends EventEmitter<IClientEvent> {
             this.$success('[online]');
             this.$emit('online');
 
-            // 开始心跳
-            this.transport.heartbeat((error, content) => {
-                if (error) {
-                    this.$error('[heartbeat-error]', error);
-                    this.$emit('error', error);
-                } else {
-                    this.$success('[heartbeat]', content);
-                }
-            });
+            // 触发心跳
+            this.heartbeat();
         });
 
         // 有错误发生调用的事件
@@ -365,6 +358,22 @@ export default class Client extends EventEmitter<IClientEvent> {
 
         // 创建transport
         this.transport.createSender(this.socket);
+    }
+
+    /**
+     * 客户端心跳
+     */
+    public heartbeat() {
+        // 开始心跳
+        this.transport.heartbeat((error, content) => {
+            if (error) {
+                this.$error('[heartbeat-error]', error);
+                this.$emit('error', error);
+            } else {
+                this.$success('[heartbeat]', content);
+                this.heartbeat();
+            }
+        });
     }
 
     /**
