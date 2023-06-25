@@ -143,7 +143,7 @@ export default class Node<NodeResponder extends NodeAction, Type extends NodeTyp
      * @param actions
      * @returns
      */
-    public createResponder(actions: NodeAction): Node<NodeResponder, Type> {
+    public createResponder<T extends NodeAction = NodeResponder>(actions: T): Node<NodeResponder, Type> {
         Object.entries(actions).forEach(([eventName, functionBody]) => {
             if (functionBody instanceof Function) {
                 this.response(eventName, functionBody.bind(null));
@@ -156,11 +156,11 @@ export default class Node<NodeResponder extends NodeAction, Type extends NodeTyp
      * 创建集合请求
      * @returns
      */
-    public createRequester(): NodeActionPromise<NodeResponder> {
+    public createRequester<T extends NodeAction = NodeResponder>(): NodeActionPromise<T> {
         /**
          * 创建代理
          */
-        const proxy = new Proxy<NodeActionPromise<NodeResponder>>({} as NodeActionPromise<NodeResponder>, {
+        const proxy = new Proxy<NodeActionPromise<T>>({} as NodeActionPromise<T>, {
             set(target, name, value, receiver) {
                 throw new TypeError((name as string) + '是只读属性');
             },

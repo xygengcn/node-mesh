@@ -33,7 +33,7 @@ server.$on('error', (error) => {
     console.log('[server-error]', error);
 });
 
-server.response('add', (i, data) => {
+server.response('add', ( data) => {
     return data;
 });
 

@@ -58,7 +58,7 @@ describe('客户端和服务端的发消息性能测试', () => {
             for (let i = 0; i < MessageMaxNums; i++) {
                 const data = new Date().getTime() + '-i-' + text;
                 const promise = client
-                    .request('add', [index, i], data)
+                    .request('add',data)
                     .then((result) => {
                         assert.equal(result, data);
                         resultNum++;
