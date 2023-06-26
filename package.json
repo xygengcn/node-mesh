@@ -1,13 +1,13 @@
 {
     "name": "node-mesh",
-    "version": "2.0.5",
+    "version": "2.0.7",
     "description": "Master - Branch 形式 Nodejs 微服务框架",
     "types": "dist/index.d.ts",
     "main": "dist/index.js",
     "module": "dist/index.esm.js",
     "scripts": {
         "husky": "husky install",
-        "build": "rm -rf ./dist && rollup -c rollup.config.js",
+        "build": "rm -rf ./dist && rollup -c rollup.config.js --bundleConfigAsCjs",
         "test": "mocha test/**/**.test.ts --timeout=5000",
         "dev": "nodemon --inspect=9229 ./examples/socket/index.ts",
         "pref:server": "nodemon test/pref/server.ts ",
@@ -39,6 +39,8 @@
     "devDependencies": {
         "@commitlint/cli": "^17.4.4",
         "@commitlint/config-conventional": "^17.4.4",
+        "@rollup/plugin-commonjs": "^25.0.2",
+        "@rollup/plugin-node-resolve": "^15.1.0",
         "@types/mocha": "^10.0.1",
         "@types/node": "^16.11.12",
         "assert": "^2.0.0",
@@ -56,10 +58,10 @@
         "typescript": "^5.0.4"
     },
     "dependencies": {
+        "@esm2cjs/p-queue": "^7.3.0",
         "eventemitter3": "5.0.1",
         "inversify": "6.0.1",
         "msgpackr-node": "^1.9.5",
-        "p-queue": "6.6.2",
         "picocolors": "^1.0.0",
         "reflect-metadata": "0.1.13",
         "serialize-error": "8.1.0",

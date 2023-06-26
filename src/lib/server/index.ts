@@ -399,11 +399,12 @@ export default class Server extends EventEmitter<IServerEvent> {
                     connection.transport.request(Message.createRequestMessage(action, ...params), callback);
                     return;
                 }
+                this.$error('[request]', Error(`不在线或者不存在socket`));
                 callback(new CustomError(CustomErrorCode.actionSocketNotActive), '不在线或者不存在socket');
                 return;
             }
         }
-
+        this.$error('[request]', Error(`动作不存在：${action}`));
         // 本地没有请求客户端
         callback(new CustomError(CustomErrorCode.actionNotExist), null);
     }
