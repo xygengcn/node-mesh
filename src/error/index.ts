@@ -1,12 +1,12 @@
 export enum CustomErrorCode {
-    success = 0, // 成功
-    none = 1, // 未知
-    requestTimeout = 2, // 请求超时
-    bindError = 3, // 绑定失败
-    requestParamsError = 4, // 请求参数问题
-    bindTimeout = 5, // 绑定超时
-    actionNotExist = 6, // 动作不存在
-    actionSocketNotActive = 7 // socket不在线或者不存在
+    success = "OK", // 成功
+    none = "NONE", // 未知
+    requestTimeout = "REQUEST_TIMEOUT", // 请求超时
+    bindError = "BIND_ERROR", // 绑定失败
+    requestParamsError = "REQUEST_PARAM_ERROR", // 请求参数问题
+    bindTimeout = "BIND_TIMEOUT", // 绑定超时
+    actionNotExist = "ACTION_NOT_EXIST", // 动作不存在
+    actionSocketNotActive = "ACTION_SOCKET_NOT_ACTIVE" // socket不在线或者不存在
 }
 
 /**
