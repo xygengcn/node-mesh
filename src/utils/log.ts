@@ -1,19 +1,20 @@
 import { EmitterDebugLevel } from '@/emitter';
-import pc from 'picocolors';
+import colors from 'picocolors';
 
-const typeColor = (type: EmitterDebugLevel) => {
+const typeColor = (type: string) => {
     switch (type) {
-        case 'debug': {
-            return pc.gray;
-        }
+        case 'debug':
+            return colors.gray;
+        case 'log':
+            return colors.yellow;
         case 'success':
-            return pc.green;
+            return colors.green;
         case 'warn':
-            return pc.bgYellow;
+            return colors.bgYellow;
         case 'error':
-            return pc.red;
+            return colors.red;
         default:
-            return pc.white;
+            return colors.white;
     }
 };
 
@@ -25,7 +26,12 @@ const typeColor = (type: EmitterDebugLevel) => {
  */
 
 export function consoleLog(namespace: string, type: EmitterDebugLevel, ...args: any) {
-    const time = new Date();
-    const formatTime = `${String(time.getMinutes()).padStart(2, '0')}:${String(time.getSeconds()).padStart(2, '0')}.${String(time.getMilliseconds()).padStart(3, '0')}`;
-    console.log(`[%s] [%s] [%s]`, pc.yellow(formatTime), namespace, typeColor(type)(type), ...args);
+    const date = new Date();
+    console.log(
+        `%s %s (%s) `,
+        date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) + '.' + date.getMilliseconds(),
+        typeColor(type)(type.toUpperCase()),
+        namespace,
+        ...args
+    );
 }
