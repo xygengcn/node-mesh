@@ -2,7 +2,7 @@ import { EventEmitter } from '@/emitter';
 import { Callback, Constructor, NotFunction } from '@/typings';
 import net, { AddressInfo } from 'net';
 import Socket, { SocketStatus } from '../socket';
-import { Transport } from '../transport';
+import { IHeartbeatOptions, Transport } from '../transport';
 import { MiddlewareClass, MiddlewareFunction } from '../middleware';
 import { container, injectable } from '@/inversify/container';
 import { CONSTANT_KEY } from '@/inversify/inversify.config';
@@ -20,6 +20,7 @@ import RegisterMiddleware from '@/middlwares/register.middleware';
 import SubscribeMiddleware from '@/middlwares/subscribe.middleware';
 import NotificationMiddleware from '@/middlwares/notification.middleware';
 import HearbeatMiddleware from '@/middlwares/heartbeat.middleware';
+import Connection from './connection-manager/connection';
 
 /**
  * 配置
@@ -77,16 +78,19 @@ export type IServerEvent = {
     send: (messages: IMessage[]) => void;
 
     // 收到客户端连接
-    clientConnect: (socket: Socket) => void;
+    clientConnect: (connection: Connection) => void;
 
     // 客户端在线
-    clientOnline: (socket: Socket) => void;
+    clientOnline: (connection: Connection) => void;
 
     // 客户端下线
-    clientOffline: (socket: Socket) => void;
+    clientOffline: (connection: Connection) => void;
 
     // 通知消息
     notification: (message: Message<INotifictionMessage>) => void;
+
+    // 来自客户端心跳
+    heartbeat: (options: IHeartbeatOptions) => void;
 };
 /**
  * 服务端
@@ -170,7 +174,7 @@ export default class Server extends EventEmitter<IServerEvent> {
             throw Error('端口错误');
         }
 
-        this.$log('[create]');
+        this.$debug('[create]');
         // 准备建立连接
         this.status = ServerStatus.pending;
 
@@ -181,7 +185,7 @@ export default class Server extends EventEmitter<IServerEvent> {
             socket.assign(netSocket);
 
             let remoteId = socket.remoteId();
-            this.$log('[connecting]', remoteId);
+            this.$debug('[connecting]', remoteId);
 
             // 设置绑定状态
             socket.setBindTimeout();
@@ -190,13 +194,13 @@ export default class Server extends EventEmitter<IServerEvent> {
             socket.updateStatus(SocketStatus.binding);
             // 来消息了
             socket.$on('message', (message) => {
-                this.$log('[message]', message.id, message.action);
+                this.$info('[message]', message.id, message.action);
                 this.$emit('message', message);
             });
 
             // 发消息
             socket.$on('send', (message) => {
-                this.$log('[send]', message);
+                this.$info('[send]', message);
                 this.$emit('send', message);
             });
 
@@ -205,7 +209,8 @@ export default class Server extends EventEmitter<IServerEvent> {
                 socket.updateStatus(SocketStatus.online);
                 socket.clearBindSetTimeout();
                 this.$success('[client-online]', remoteId);
-                this.$emit('clientOnline', socket);
+                const connecttion = this.connectionManager.findConnectionById(remoteId);
+                this.$emit('clientOnline', connecttion);
 
                 // 日志
                 this.getConnections().then((result) => {
@@ -216,7 +221,8 @@ export default class Server extends EventEmitter<IServerEvent> {
             // 下线了
             socket.$on('offline', () => {
                 this.$warn('[client-offline]', remoteId, socket.status);
-                this.$emit('clientOffline', socket);
+                const connecttion = this.connectionManager.findConnectionById(remoteId);
+                this.$emit('clientOffline', connecttion);
             });
 
             /**
@@ -261,10 +267,10 @@ export default class Server extends EventEmitter<IServerEvent> {
             transport.use(...this.middlewareManager);
 
             // 存储客户端
-            this.connectionManager.createConnection(socket, transport);
+            const connection = this.connectionManager.createConnection(socket, transport);
 
             // 回调
-            this.$emit('clientConnect', socket);
+            this.$emit('clientConnect', connection);
         });
 
         //设置监听时的回调函数
@@ -279,7 +285,7 @@ export default class Server extends EventEmitter<IServerEvent> {
             this.server.unref();
             this.server.removeAllListeners();
             this.status = ServerStatus.offline;
-            this.$log('[close]');
+            this.$debug('[close]');
             this.$emit('offline');
         });
 
@@ -297,7 +303,7 @@ export default class Server extends EventEmitter<IServerEvent> {
      */
     public publish(action: string, ...args: any[]) {
         if (isString(action)) {
-            this.$log('[publish]', action);
+            this.$debug('[publish]', action);
             // 通知自己的事件
             this.subscriber.pub(action, ...args);
 
@@ -328,7 +334,7 @@ export default class Server extends EventEmitter<IServerEvent> {
      */
     public subscribe(action: string, callback: IHandler<void>) {
         if (isString(action) && isFunction(callback)) {
-            this.$log('[subscribe]', action);
+            this.$debug('[subscribe]', action);
             this.subscriber.sub(action, callback);
         }
         return;
@@ -341,7 +347,7 @@ export default class Server extends EventEmitter<IServerEvent> {
      */
     public unsubscribe(action: string) {
         if (!isString(action)) return;
-        this.$log('[subscribe]', action);
+        this.$debug('[subscribe]', action);
         this.subscriber.unsub(action);
     }
 
@@ -378,7 +384,7 @@ export default class Server extends EventEmitter<IServerEvent> {
      */
     public async request<T = any, K = any>(action: T, params: Array<NotFunction<K>>, callback: Callback) {
         // 日志
-        this.$log('[request]', '发起请求：', action);
+        this.$debug('[request]', '发起请求：', action);
         if (!action || typeof action !== 'string') {
             return callback(new CustomError(CustomErrorCode.requestParamsError), null);
         }
@@ -399,12 +405,12 @@ export default class Server extends EventEmitter<IServerEvent> {
                     connection.transport.request(Message.createRequestMessage(action, ...params), callback);
                     return;
                 }
-                this.$error('[request]', Error(`不在线或者不存在socket`));
+                this.$debug('[request]', Error(`不在线或者不存在socket`));
                 callback(new CustomError(CustomErrorCode.actionSocketNotActive), '不在线或者不存在socket');
                 return;
             }
         }
-        this.$error('[request]', Error(`动作不存在：${action}`));
+        this.$debug('[request]', Error(`动作不存在：${action}`));
         // 本地没有请求客户端
         callback(new CustomError(CustomErrorCode.actionNotExist), null);
     }
@@ -423,7 +429,7 @@ export default class Server extends EventEmitter<IServerEvent> {
      */
     public connect() {
         this.$emit('connect');
-        this.$log('[connect]');
+        this.$debug('[connect]');
         this.server.listen({ port: this.options.port, keepAlive: true, keepAliveInitialDelay: 0, host: '0.0.0.0' });
     }
 
@@ -459,7 +465,7 @@ export default class Server extends EventEmitter<IServerEvent> {
      * 停止运行
      */
     public async disconnect() {
-        this.$log('[disconnect]');
+        this.$debug('[disconnect]');
         this.status = ServerStatus.offline;
         // 停止后把所有的客户端断开
         this.connectionManager.end();

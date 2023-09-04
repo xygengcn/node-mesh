@@ -50,7 +50,7 @@ export default class Socket extends net.Socket {
     /**
      * 名字
      */
-    public name: string;
+    public name: string = '';
 
     /**
      * 状态
@@ -149,7 +149,7 @@ export default class Socket extends net.Socket {
     }
 
     /**
-     * 更新状态
+     * 绑定名字
      */
     public bindName(name: string) {
         this.name = name;

@@ -29,7 +29,7 @@ export default class AuthMiddleware implements MiddlewareClass {
         return (message: Message) => {
             const remoteId = transport.sender.socket.remoteId();
 
-            server.$log('[client-bind]', remoteId, message.params);
+            server.$debug('[client-bind]', remoteId, message.params);
 
             // 客户端校验
             const [namespace, clientAuth, clientResponder, clientSubscriber] = message.params;
@@ -39,8 +39,8 @@ export default class AuthMiddleware implements MiddlewareClass {
 
             // 服务端有权限校验且校验通过，
             if ((serverAuth && serverAuth === clientAuth) || !serverAuth) {
-                transport.sender.socket.$emit('online');
                 server.connectionManager.bindName(namespace, remoteId);
+                transport.sender.socket.$emit('online');
                 // 请求
                 if (Array.isArray(clientResponder)) {
                     clientResponder?.forEach((key) => {
@@ -59,7 +59,7 @@ export default class AuthMiddleware implements MiddlewareClass {
                 }
                 transport.callback(message, null, null);
             } else {
-                server.$log('[client-bindError]', remoteId);
+                server.$debug('[client-bindError]', remoteId);
                 transport.callback(message, null, new CustomError(CustomErrorCode.bindError, '校验失败'));
             }
         };

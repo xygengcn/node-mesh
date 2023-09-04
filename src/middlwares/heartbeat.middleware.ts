@@ -1,4 +1,4 @@
-import { Transport } from '@/lib/transport';
+import { IHeartbeatOptions, Transport } from '@/lib/transport';
 import { Inject, Middleware } from '@/decorator';
 import { Message, MessageSysAction, isSysMessage } from '@/lib/message';
 import type Server from '@/lib/server';
@@ -26,8 +26,19 @@ export default class HearbeatMiddleware implements MiddlewareClass {
      */
     public bind(@Inject(MiddlewareParamKey.server) server: Server, @Inject(MiddlewareParamKey.transport) transport: Transport) {
         return async (message: Message) => {
-            server.$debug('[heartbeat]', transport.sender.socket.remoteId());
-            transport.callback(message, { result: true }, null);
+            const params = message.params[0] as IHeartbeatOptions;
+            server.$debug('[heartbeat]', params);
+            server.$emit('heartbeat', params);
+            transport.callback(
+                message,
+                {
+                    id: server.localId(),
+                    name: server.options.namespace,
+                    events: server.responder.toHandlerNames(),
+                    memory: process.memoryUsage()
+                },
+                null
+            );
         };
     }
 }

@@ -8,6 +8,9 @@ export default class Connection {
     // id
     public readonly id: string;
 
+    // 名字
+    public name: string = '';
+
     // socket
     public socket: Socket;
 
@@ -34,5 +37,13 @@ export default class Connection {
         await this.transport.$destroy(true);
         this.transport = null;
         this.socket = null;
+    }
+
+    /**
+     * 绑定名字
+     */
+    public bindName(name: string) {
+        this.name = name;
+        this.socket.bindName(name);
     }
 }

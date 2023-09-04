@@ -28,7 +28,7 @@ const typeColor = (type: string) => {
 export function consoleLog(namespace: string, type: EmitterDebugLevel, ...args: any) {
     const date = new Date();
     console.log(
-        `%s %s (%s) `,
+        `[%s] %s (%s) `,
         date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) + '.' + date.getMilliseconds(),
         typeColor(type)(type.toUpperCase()),
         namespace,

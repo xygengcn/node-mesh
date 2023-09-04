@@ -41,7 +41,7 @@ export default class Node<NodeResponder extends NodeAction, Type extends NodeTyp
     /**
      * 对象
      */
-    protected socket!: NodeFactory<Type>;
+    public socket!: NodeFactory<Type>;
 
     // 构建分支
     constructor(type: Type, options: NodeOptions<Type>) {

@@ -10,6 +10,8 @@
         "build": "rm -rf ./dist && rollup -c rollup.config.js --bundleConfigAsCjs",
         "test": "mocha test/**/**.test.ts --timeout=5000",
         "dev": "nodemon --inspect=9229 ./examples/socket/index.ts",
+        "master": "nodemon ./examples/hello-world/master.ts",
+        "branch": "nodemon ./examples/hello-world/branch.ts",
         "pref:server": "nodemon test/pref/server.ts ",
         "pref": "npm run pref:server & npx mocha --exit test/pref/client.ts -t=100000",
         "prepublish": "npm run build"

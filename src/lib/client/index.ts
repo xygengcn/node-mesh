@@ -14,7 +14,7 @@ import { MiddlewareClass, MiddlewareFunction } from '../middleware';
 import Responder from '../responder';
 import { IHandler } from '../responder/handler';
 import Socket from '../socket';
-import { Transport } from '../transport';
+import { IHeartbeatOptions, Transport } from '../transport';
 import NotificationMiddleware from '@/middlwares/notification.middleware';
 
 /**
@@ -69,6 +69,9 @@ export type IClientEvent = {
 
     // 发消息
     send: (messages: IMessage[]) => void;
+
+    // 来自客户端心跳
+    heartbeat: (options: IHeartbeatOptions) => void;
 };
 
 /**
@@ -147,7 +150,7 @@ export default class Client extends EventEmitter<IClientEvent> {
      */
     public async request(action: string, params: Array<NotFunction<any>>, callback: Callback) {
         // 日志
-        this.$log('[request]', '发起请求：', action);
+        this.$debug('[request]', '发起请求：', action);
         if (!action || typeof action !== 'string') {
             callback?.(new CustomError(CustomErrorCode.requestParamsError), null);
             return;
@@ -188,7 +191,7 @@ export default class Client extends EventEmitter<IClientEvent> {
      */
     public publish(action: string, ...args: any[]) {
         if (!isString(action)) return;
-        this.$log('[publish]', action);
+        this.$debug('[publish]', action);
         this.transport.subscriber.pub(action, ...args);
         // 发送订阅消息到服务端
         this.transport.send(Message.createPublishMessage(action, ...args));
@@ -201,7 +204,7 @@ export default class Client extends EventEmitter<IClientEvent> {
      */
     public subscribe(action: string, callback: IHandler<void>) {
         if (!isString(action) || !isFunction(callback)) return;
-        this.$log('[subscribe]', action);
+        this.$debug('[subscribe]', action);
         if (isString(action) && isFunction(callback)) {
             this.transport.subscriber.sub(action, callback);
         }
@@ -219,7 +222,7 @@ export default class Client extends EventEmitter<IClientEvent> {
      */
     public unsubscribe(action: string) {
         if (!isString(action)) return;
-        this.$log('[subscribe]', action);
+        this.$debug('[subscribe]', action);
         this.transport.subscriber.unsub(action);
     }
 
@@ -266,7 +269,7 @@ export default class Client extends EventEmitter<IClientEvent> {
     public createSocket() {
         // 正在请求
 
-        this.$log('[create]');
+        this.$debug('[create]');
 
         // 初始
         this.socket = new Socket();
@@ -276,20 +279,20 @@ export default class Client extends EventEmitter<IClientEvent> {
 
         // 来消息了
         this.socket.$on('message', (message) => {
-            this.$log('[message]', message.id, message.action);
+            this.$info('[message]', message.id, message.action);
             this.$emit('message', message);
         });
 
         // 发消息
         this.socket.$on('send', (messages) => {
-            this.$log('[send]', messages);
+            this.$info('[send]', messages);
             this.$emit('send', messages);
         });
 
         // 链接事件
         this.socket.$once('connect', () => {
             // 日志
-            this.$log('[connect]', this.socket.localId());
+            this.$debug('[connect]', this.socket.localId());
             // 清除重新连接计数器
             this.clearReconnectTimeout();
             // 修改状态
@@ -368,15 +371,24 @@ export default class Client extends EventEmitter<IClientEvent> {
      */
     public heartbeat() {
         // 开始心跳
-        this.transport.heartbeat((error, content) => {
-            if (error) {
-                this.$error('[heartbeat-error]', error);
-                this.$emit('error', error);
-            } else {
-                this.$success('[heartbeat]', content);
-                this.heartbeat();
+        this.transport.heartbeat(
+            {
+                id: this.socket.remoteId(),
+                name: this.options.namespace,
+                memory: process.memoryUsage(),
+                events: this.responder.toHandlerNames()
+            },
+            (error, content) => {
+                if (error) {
+                    this.$error('[heartbeat]', error);
+                    this.$emit('error', error);
+                } else {
+                    this.$success('[heartbeat]', content);
+                    this.$emit('heartbeat', content);
+                    this.heartbeat();
+                }
             }
-        });
+        );
     }
 
     /**

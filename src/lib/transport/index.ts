@@ -18,6 +18,14 @@ export interface ITransportOptions extends ISenderOptions, IRequestOptions {
     heartbeat?: number;
 }
 
+// 心跳参数
+export interface IHeartbeatOptions {
+    id: string;
+    name: string;
+    memory: NodeJS.MemoryUsage;
+    events: string[];
+}
+
 /**
  * 注册动作函数
  */
@@ -190,14 +198,14 @@ export class Transport {
      *
      * 10s不活动触发心跳
      */
-    public heartbeat(callback: Callback) {
+    public heartbeat(params: IHeartbeatOptions, callback: Callback) {
         this.stopHeartbeat();
         // 没有消息来10秒后开始心跳
         this.heartbeatTimeout = setTimeout(() => {
             const message = new Message();
             message.setSource(MessageSource.system);
             message.setAction(MessageSysAction.heartbeat);
-            message.setParams(this.options.namespace);
+            message.setParams(params);
             this.request(message, callback);
         }, this.options.heartbeat || 5 * 60 * 1000);
     }

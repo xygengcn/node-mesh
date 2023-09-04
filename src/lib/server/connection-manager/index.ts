@@ -1,4 +1,4 @@
-import Socket from '@/lib/socket';
+import Socket, { SocketStatus } from '@/lib/socket';
 import Connection from './connection';
 import { type Transport } from '@/lib/transport';
 import { Message } from '@/lib/message';
@@ -27,6 +27,7 @@ export default class ConnectionManager {
         }
         const connection = new Connection(id, socket, transport);
         this.idBindConnectionManager.set(id, connection);
+        return connection;
     }
 
     // 连接数量
@@ -136,8 +137,16 @@ export default class ConnectionManager {
      * 所有链接
      * @returns
      */
-    public connections(): string[] {
-        return Array.from(this.idBindConnectionManager.keys());
+    public connections(): Array<{ id: string; name: string; status: SocketStatus }> {
+        const connections = [];
+        this.idBindConnectionManager.forEach((connection, id) => {
+            connections.push({
+                id,
+                name: connection.name,
+                status: connection.status
+            });
+        });
+        return connections;
     }
 
     /**
@@ -149,7 +158,7 @@ export default class ConnectionManager {
         if (this.idBindConnectionManager.has(id)) {
             this.nameBindIdManager.set(name, id);
             const connection = this.idBindConnectionManager.get(id);
-            connection.socket.bindName(name);
+            connection.bindName(name);
         }
     }
 
