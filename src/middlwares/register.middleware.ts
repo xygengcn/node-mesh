@@ -6,6 +6,8 @@ import { MiddlewareClass, MiddlewareParamKey, Next } from '../lib/middleware/ind
 
 /**
  * 客户端上线
+ *
+ * 服务端中间件
  */
 
 @Middleware()
@@ -27,26 +29,12 @@ export default class RegisterMiddleware implements MiddlewareClass {
             const remoteId = transport.sender?.socket.remoteId();
 
             // 获取
-            const [clientResponder, clientSubscriber]: [Array<string>, Array<string>] = message.params;
+            const [responderEvents, subscribeEvents]: [Array<string>, Array<string>] = message.params;
 
-            server.$debug('[register]', remoteId, clientResponder, clientSubscriber);
+            server.$debug('[register]', remoteId, responderEvents, subscribeEvents);
 
-            // 请求
-            if (Array.isArray(clientResponder)) {
-                clientResponder.forEach((key) => {
-                    server.responder.createHandler(key, remoteId);
-                });
-            }
-
-            // 订阅
-            if (Array.isArray(clientSubscriber)) {
-                clientSubscriber.forEach((key) => {
-                    // 客户端绑定
-                    transport.subscriber.sub(key);
-                    // 绑定客户客户端
-                    server.connectionManager.bindSubscribe(key, remoteId);
-                });
-            }
+            // 绑定事件
+            server.bindConnectionEvents(remoteId, responderEvents, subscribeEvents);
             next();
         };
     }

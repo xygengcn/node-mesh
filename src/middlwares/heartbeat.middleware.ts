@@ -29,16 +29,20 @@ export default class HearbeatMiddleware implements MiddlewareClass {
             const params = message.params[0] as IHeartbeatOptions;
             server.$debug('[heartbeat]', params);
             server.$emit('heartbeat', params);
+            // 回调消息
             transport.callback(
                 message,
                 {
                     id: server.localId(),
                     name: server.options.namespace,
-                    events: server.responder.toHandlerNames(),
+                    responderEvents: server.responder.toHandlerEvents(),
+                    subscribeEvents: server.subscriber.toSubscribeEvents(),
                     memory: process.memoryUsage()
-                },
+                } as IHeartbeatOptions,
                 null
             );
+            // 再次绑定资源
+            server.bindConnectionEvents(params.id, params.responderEvents, params.subscribeEvents);
         };
     }
 }

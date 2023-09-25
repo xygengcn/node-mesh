@@ -117,7 +117,7 @@ export default class Responder {
     /**
      * 所有动作
      */
-    public toHandlerNames() {
+    public toHandlerEvents() {
         return Array.from(this.handlerManager.keys());
     }
 }

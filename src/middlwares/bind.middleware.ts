@@ -7,6 +7,8 @@ import { MiddlewareClass, MiddlewareParamKey } from '../lib/middleware/index';
 
 /**
  * 绑定中间件
+ *
+ * 客户端中间件
  */
 
 @Middleware()
@@ -34,7 +36,7 @@ export default class BindMiddleware implements MiddlewareClass {
                 message.setSource(MessageSource.system);
 
                 // keys
-                const responderName = client.responder.toHandlerNames();
+                const responderName = client.responder.toHandlerEvents();
 
                 // 订阅
                 const subscriberName = client.transport.subscriber.toEventNames();

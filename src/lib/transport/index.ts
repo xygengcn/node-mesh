@@ -23,7 +23,8 @@ export interface IHeartbeatOptions {
     id: string;
     name: string;
     memory: NodeJS.MemoryUsage;
-    events: string[];
+    responderEvents: string[];
+    subscribeEvents: string[];
 }
 
 /**
@@ -237,7 +238,8 @@ export class Transport {
         }
         // 销毁定时器
         this.requestor.$destroy();
+
         // 清除
-        return this.sender.$destroy();
+        return this.sender?.$destroy();
     }
 }

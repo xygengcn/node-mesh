@@ -7,6 +7,8 @@ import { MiddlewareClass, MiddlewareParamKey } from '../lib/middleware/index';
 
 /**
  * 系统自带校验中间件
+ *
+ * 服务端中间件
  */
 @Middleware()
 export default class AuthMiddleware implements MiddlewareClass {
@@ -32,7 +34,7 @@ export default class AuthMiddleware implements MiddlewareClass {
             server.$debug('[client-bind]', remoteId, message.params);
 
             // 客户端校验
-            const [namespace, clientAuth, clientResponder, clientSubscriber] = message.params;
+            const [namespace, clientAuth, responderEvents, subscribeEvents] = message.params;
 
             // 服务端校验
             const serverAuth = server.options?.auth;
@@ -40,23 +42,11 @@ export default class AuthMiddleware implements MiddlewareClass {
             // 服务端有权限校验且校验通过，
             if ((serverAuth && serverAuth === clientAuth) || !serverAuth) {
                 server.connectionManager.bindName(namespace, remoteId);
-                transport.sender.socket.$emit('online');
-                // 请求
-                if (Array.isArray(clientResponder)) {
-                    clientResponder?.forEach((key) => {
-                        server.responder.createHandler(key, remoteId);
-                    });
-                }
+                // 绑定客户端事件
+                server.bindConnectionEvents(remoteId, responderEvents || [], subscribeEvents || []);
 
-                // 订阅
-                if (Array.isArray(clientSubscriber)) {
-                    clientSubscriber?.forEach((key) => {
-                        // 客户端绑定
-                        transport.subscriber.sub(key);
-                        // 绑定客户客户端
-                        server.connectionManager.bindSubscribe(key, remoteId);
-                    });
-                }
+                transport.sender.socket.$emit('online');
+
                 transport.callback(message, null, null);
             } else {
                 server.$debug('[client-bindError]', remoteId);
