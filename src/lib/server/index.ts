@@ -421,6 +421,9 @@ export default class Server extends EventEmitter<IServerEvent> {
      * @param callback
      */
     public response(action: string, callback: IHandler) {
+        if (!isString(action)) {
+            return;
+        }
         this.responder.createHandler(action, callback);
     }
 
@@ -497,6 +500,9 @@ export default class Server extends EventEmitter<IServerEvent> {
         // 请求
         if (Array.isArray(responderEvents)) {
             responderEvents?.forEach((key) => {
+                if (!isString(key)) {
+                    return;
+                }
                 this.responder.createHandler(key, connectionId);
             });
         }

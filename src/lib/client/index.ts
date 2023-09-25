@@ -177,6 +177,9 @@ export default class Client extends EventEmitter<IClientEvent> {
      * @param callback
      */
     public response(action: string, callback: IHandler) {
+        if (!isString(action)) {
+            return;
+        }
         this.responder.createHandler(action, callback);
         // 如果上线了再通知服务端
         if (this.socket?.status === SocketStatus.online) {
