@@ -510,6 +510,9 @@ export default class Server extends EventEmitter<IServerEvent> {
         if (Array.isArray(subscribeEvents)) {
             const connection = this.connectionManager.findConnectionById(connectionId);
             subscribeEvents?.forEach((key) => {
+                if (!isString(key)) {
+                    return;
+                }
                 // 客户端绑定
                 connection.transport.subscriber.sub(key);
                 // 绑定客户客户端

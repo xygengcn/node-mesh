@@ -32,20 +32,24 @@ export default class SubscribeMiddleware implements MiddlewareClass {
     ) {
         return async (message: Message) => {
             const id = transport.sender.socket.remoteId();
+
+            // 客户端订阅
             if (client) {
                 client.$emit('subscribe', message.action, ...(message.params || []));
                 client.transport.subscriber.pub(message.action, ...(message.params || []));
-            } else {
-                // 通知自己的事件
-                if (server.subscriber.hasSub(message.action)) {
-                    server.$emit('subscribe', message.action, ...(message.params || []));
-                    server.subscriber.pub(message.action, ...(message.params || []));
-                }
-                // 通知订阅的客户端
-                const connectionIds = server.connectionManager.findConnectionIdsBySubscribe(message.action);
-                const pushMessage = Message.createPublishMessage(message.action, ...(message.params || []));
-                server.connectionManager.broadcast(pushMessage, connectionIds, [id]);
+                return;
             }
+            // 服务端订阅
+
+            // 通知服务端自己的事件
+            if (server.subscriber.hasSub(message.action)) {
+                server.$emit('subscribe', message.action, ...(message.params || []));
+                server.subscriber.pub(message.action, ...(message.params || []));
+            }
+            // 通知订阅的客户端
+            const connectionIds = server.connectionManager.findConnectionIdsBySubscribe(message.action);
+            const pushMessage = Message.createPublishMessage(message.action, ...(message.params || []));
+            server.connectionManager.broadcast(pushMessage, connectionIds, [id]);
         };
     }
 }

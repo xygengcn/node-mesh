@@ -30,15 +30,21 @@ export default class Responder {
             return;
         }
 
-        // 判断存不存在
+        // 判断存不存在，存在则移除
         if (this.handlerManager.has(action)) {
-            return;
+            const handler = this.handlerManager.get(action);
+            handler.destroy();
+            this.handlerManager.delete(action);
         }
 
+        // 新建处理
         const handler = new Handler(this.namespace, action);
+
+        // 函数回调，主要是本地处理
         if (isFunction(callback) && typeof callback === 'function') {
             handler.setCallback(callback);
         } else if (isString(callback) && typeof callback === 'string') {
+            // 客户端处理
             handler.setSocketId(callback);
         } else {
             return;
