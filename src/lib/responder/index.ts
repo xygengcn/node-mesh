@@ -8,7 +8,7 @@ export default class Responder {
      *
      * 先实现action 单一动作
      */
-    private handlerManager: Map<string, Handler> = new Map();
+    public handlerManager: Map<string, Handler> = new Map();
 
     /**
      * 名称
@@ -33,6 +33,11 @@ export default class Responder {
         // 判断存不存在，存在则移除
         if (this.handlerManager.has(action)) {
             const handler = this.handlerManager.get(action);
+            // 相同则跳过
+            if (handler.remoteId === callback) {
+                return;
+            }
+            // 不同则移除
             handler.destroy();
             this.handlerManager.delete(action);
         }

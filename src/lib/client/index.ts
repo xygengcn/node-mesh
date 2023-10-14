@@ -376,7 +376,7 @@ export default class Client extends EventEmitter<IClientEvent> {
         // 开始心跳
         this.transport.heartbeat(
             {
-                id: this.socket.remoteId(),
+                id: this.socket.localId(),
                 name: this.options.namespace,
                 memory: process.memoryUsage(),
                 responderEvents: this.responder.toHandlerEvents(),

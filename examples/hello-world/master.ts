@@ -6,6 +6,10 @@ master.$on('online', () => {
     console.log('[master] 上线了');
 });
 
+master.$on('logger', (...args) => {
+    console.log('[branch]', ...args);
+});
+
 master.$on('clientOnline', (connection) => {
     console.debug('[client-online]', connection.id, connection.status, connection.name);
 });

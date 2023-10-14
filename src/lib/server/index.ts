@@ -187,6 +187,13 @@ export default class Server extends EventEmitter<IServerEvent> {
             let remoteId = socket.remoteId();
             this.$debug('[connecting]', remoteId);
 
+            // 如果存在则断开连接
+            if (this.connectionManager.findConnectionById(remoteId)) {
+                socket.end();
+                this.$error('[connecting]', new CustomError(CustomErrorCode.bindError, remoteId + '已存在'));
+                return;
+            }
+
             // 设置绑定状态
             socket.setBindTimeout();
 
@@ -497,6 +504,7 @@ export default class Server extends EventEmitter<IServerEvent> {
      * @param subscribeEvents
      */
     public bindConnectionEvents(connectionId: string, responderEvents: string[], subscribeEvents: string[]) {
+        this.$debug('[bindConnectionEvents]', connectionId, responderEvents, subscribeEvents);
         // 请求
         if (Array.isArray(responderEvents)) {
             responderEvents?.forEach((key) => {

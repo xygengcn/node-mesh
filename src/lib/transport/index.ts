@@ -20,7 +20,7 @@ export interface ITransportOptions extends ISenderOptions, IRequestOptions {
 
 // 心跳参数
 export interface IHeartbeatOptions {
-    id: string;
+    id: string; // 客户端id
     name: string;
     memory: NodeJS.MemoryUsage;
     responderEvents: string[];
