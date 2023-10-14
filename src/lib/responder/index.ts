@@ -25,23 +25,26 @@ export default class Responder {
      * @param callback
      */
     public createHandler(action: string, callback: IHandler | string) {
-        if (!isString(action)) {
-            throw TypeError('action不存在');
-        }
         // 有callback说明是服务端的，服务端的优先级高
         if (this.hasHandlerCallback(action)) {
             return;
         }
 
-        // 判断存不存在
+        // 判断存不存在，存在则移除
         if (this.handlerManager.has(action)) {
-            return;
+            const handler = this.handlerManager.get(action);
+            handler.destroy();
+            this.handlerManager.delete(action);
         }
 
+        // 新建处理
         const handler = new Handler(this.namespace, action);
+
+        // 函数回调，主要是本地处理
         if (isFunction(callback) && typeof callback === 'function') {
             handler.setCallback(callback);
         } else if (isString(callback) && typeof callback === 'string') {
+            // 客户端处理
             handler.setSocketId(callback);
         } else {
             return;
@@ -117,7 +120,7 @@ export default class Responder {
     /**
      * 所有动作
      */
-    public toHandlerNames() {
+    public toHandlerEvents() {
         return Array.from(this.handlerManager.keys());
     }
 }

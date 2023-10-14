@@ -54,7 +54,7 @@ export default class Subscriber extends EventEmitter<{ [key: string]: (...args: 
      * 订阅事件
      * @returns
      */
-    public toSubscribeKeys(): string[] {
+    public toSubscribeEvents(): string[] {
         return Array.from(this.subscribeNames.keys());
     }
 

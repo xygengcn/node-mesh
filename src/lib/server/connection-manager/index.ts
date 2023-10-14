@@ -124,7 +124,7 @@ export default class ConnectionManager {
      */
     public unBindSubscribe(remoteId: string) {
         const connection = this.findConnectionById(remoteId);
-        const subscribeNames = connection?.transport.subscriber.toSubscribeKeys();
+        const subscribeNames = connection?.transport.subscriber.toSubscribeEvents();
         if (subscribeNames.length) {
             subscribeNames.forEach((key) => {
                 const sub = this.subscribeBindIdManager.get(key);

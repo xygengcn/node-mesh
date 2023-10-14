@@ -50,4 +50,11 @@ export default class Handler {
             Reflect.set(this, 'remoteId', id);
         }
     }
+
+    /**
+     * 销毁
+     */
+    public destroy() {
+        Reflect.set(this, 'callback', null);
+    }
 }

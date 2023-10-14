@@ -177,6 +177,9 @@ export default class Client extends EventEmitter<IClientEvent> {
      * @param callback
      */
     public response(action: string, callback: IHandler) {
+        if (!isString(action)) {
+            return;
+        }
         this.responder.createHandler(action, callback);
         // 如果上线了再通知服务端
         if (this.socket?.status === SocketStatus.online) {
@@ -376,7 +379,8 @@ export default class Client extends EventEmitter<IClientEvent> {
                 id: this.socket.remoteId(),
                 name: this.options.namespace,
                 memory: process.memoryUsage(),
-                events: this.responder.toHandlerNames()
+                responderEvents: this.responder.toHandlerEvents(),
+                subscribeEvents: this.transport.subscriber.toSubscribeEvents()
             },
             (error, content) => {
                 if (error) {
@@ -416,14 +420,14 @@ export default class Client extends EventEmitter<IClientEvent> {
      */
     public register() {
         // keys
-        const responderName = this.responder.toHandlerNames();
+        const responderEvents = this.responder.toHandlerEvents();
 
         // 订阅
-        const subscriberName = this.transport.subscriber.toEventNames();
+        const subscribeEvents = this.transport.subscriber.toEventNames();
 
-        this.$debug('[register]', responderName, subscriberName);
+        this.$debug('[register]', responderEvents, subscribeEvents);
 
-        const message = Message.createNotificationMessage(MessageSysAction.register, responderName, subscriberName);
+        const message = Message.createNotificationMessage(MessageSysAction.register, responderEvents, subscribeEvents);
         message.setSource(MessageSource.system);
 
         return this.transport.send(message);

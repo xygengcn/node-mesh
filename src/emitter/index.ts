@@ -31,8 +31,14 @@ export class EventEmitter<K extends Record<string, any> = {}> implements EventEm
      */
     private level: string[] = [];
 
+    /**
+     * 允许所有级别
+     */
+    private isAllowAllLevel: boolean = false;
+
     constructor() {
-        this.level = process.env.DEBUG_LEVEL ? process.env.DEBUG_LEVEL.split('|') : [];
+        this.isAllowAllLevel = process.env.NODE_MESH_DEBUG_LEVEL === '*' || process.env.NODE_MESH_DEBUG_LEVEL === 'all';
+        this.level = process.env.NODE_MESH_DEBUG_LEVEL ? process.env.NODE_MESH_DEBUG_LEVEL.split('|') : [];
     }
 
     /**
@@ -41,7 +47,7 @@ export class EventEmitter<K extends Record<string, any> = {}> implements EventEm
      * @returns
      */
     private isValidLevel(level: EmitterDebugLevel) {
-        if (process.env.DEBUG_LEVEL === '*' || process.env.DEBUG_LEVEL === 'all') {
+        if (this.isAllowAllLevel) {
             return true;
         }
         if (this.level.length) {

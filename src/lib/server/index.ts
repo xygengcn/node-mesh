@@ -421,6 +421,9 @@ export default class Server extends EventEmitter<IServerEvent> {
      * @param callback
      */
     public response(action: string, callback: IHandler) {
+        if (!isString(action)) {
+            return;
+        }
         this.responder.createHandler(action, callback);
     }
 
@@ -485,5 +488,36 @@ export default class Server extends EventEmitter<IServerEvent> {
         const addressInfo = this.server.address() as AddressInfo;
         if (!addressInfo) return '';
         return `${addressInfo.family || 'IPV4'}://${addressInfo.address}:${addressInfo.port}`;
+    }
+
+    /**
+     * 绑定客户端事件
+     * @param connectionId
+     * @param responderEvents
+     * @param subscribeEvents
+     */
+    public bindConnectionEvents(connectionId: string, responderEvents: string[], subscribeEvents: string[]) {
+        // 请求
+        if (Array.isArray(responderEvents)) {
+            responderEvents?.forEach((key) => {
+                if (!isString(key)) {
+                    return;
+                }
+                this.responder.createHandler(key, connectionId);
+            });
+        }
+        // 订阅
+        if (Array.isArray(subscribeEvents)) {
+            const connection = this.connectionManager.findConnectionById(connectionId);
+            subscribeEvents?.forEach((key) => {
+                if (!isString(key)) {
+                    return;
+                }
+                // 客户端绑定
+                connection.transport.subscriber.sub(key);
+                // 绑定客户客户端
+                this.connectionManager.bindSubscribe(key, connectionId);
+            });
+        }
     }
 }
