@@ -138,7 +138,7 @@ export default class Server extends EventEmitter<IServerEvent> {
         this.options = Object.assign({ logger: true }, options || {}) as IServerOptions;
 
         // 回答者
-        this.responder = new Responder(this.options.namespace);
+        this.responder = new Responder();
 
         // 订阅
         this.subscriber = new Subscriber();
@@ -431,7 +431,7 @@ export default class Server extends EventEmitter<IServerEvent> {
         if (!isString(action)) {
             return;
         }
-        this.responder.createHandler(action, callback);
+        this.responder.createHandler(action, this.options.namespace, callback);
     }
 
     /**
@@ -505,18 +505,19 @@ export default class Server extends EventEmitter<IServerEvent> {
      */
     public bindConnectionEvents(connectionId: string, responderEvents: string[], subscribeEvents: string[]) {
         this.$debug('[bindConnectionEvents]', connectionId, responderEvents, subscribeEvents);
+
+        const connection = this.connectionManager.findConnectionById(connectionId);
         // 请求
-        if (Array.isArray(responderEvents)) {
+        if (Array.isArray(responderEvents) && connection) {
             responderEvents?.forEach((key) => {
                 if (!isString(key)) {
                     return;
                 }
-                this.responder.createHandler(key, connectionId);
+                this.responder.createHandler(key, connection.name, connectionId);
             });
         }
         // 订阅
         if (Array.isArray(subscribeEvents)) {
-            const connection = this.connectionManager.findConnectionById(connectionId);
             subscribeEvents?.forEach((key) => {
                 if (!isString(key)) {
                     return;

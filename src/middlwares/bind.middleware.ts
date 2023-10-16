@@ -36,7 +36,7 @@ export default class BindMiddleware implements MiddlewareClass {
                 message.setSource(MessageSource.system);
 
                 // keys
-                const responderName = client.responder.toHandlerEvents();
+                const responderName = client.responder.toLocalEvents();
 
                 // 订阅
                 const subscriberName = client.transport.subscriber.toEventNames();

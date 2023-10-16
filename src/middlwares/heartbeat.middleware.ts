@@ -35,7 +35,7 @@ export default class HearbeatMiddleware implements MiddlewareClass {
                 {
                     id: server.localId(),
                     name: server.options.namespace,
-                    responderEvents: server.responder.toHandlerEvents(),
+                    responderEvents: server.responder.toLocalEvents(),
                     subscribeEvents: server.subscriber.toSubscribeEvents(),
                     memory: process.memoryUsage()
                 } as IHeartbeatOptions,

@@ -115,7 +115,7 @@ export default class Client extends EventEmitter<IClientEvent> {
         // 配置
         this.options = Object.assign({ logger: true }, options || {}) as IClientOptions;
         // 回答者
-        this.responder = new Responder(this.options.namespace);
+        this.responder = new Responder();
 
         // 运输者
         this.transport = new Transport(this.options);
@@ -180,7 +180,7 @@ export default class Client extends EventEmitter<IClientEvent> {
         if (!isString(action)) {
             return;
         }
-        this.responder.createHandler(action, callback);
+        this.responder.createHandler(action, this.options.namespace, callback);
         // 如果上线了再通知服务端
         if (this.socket?.status === SocketStatus.online) {
             this.register();
@@ -379,7 +379,7 @@ export default class Client extends EventEmitter<IClientEvent> {
                 id: this.socket.localId(),
                 name: this.options.namespace,
                 memory: process.memoryUsage(),
-                responderEvents: this.responder.toHandlerEvents(),
+                responderEvents: this.responder.toLocalEvents(),
                 subscribeEvents: this.transport.subscriber.toSubscribeEvents()
             },
             (error, content) => {
@@ -420,7 +420,7 @@ export default class Client extends EventEmitter<IClientEvent> {
      */
     public register() {
         // keys
-        const responderEvents = this.responder.toHandlerEvents();
+        const responderEvents = this.responder.toLocalEvents();
 
         // 订阅
         const subscribeEvents = this.transport.subscriber.toEventNames();

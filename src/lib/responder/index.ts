@@ -11,20 +11,11 @@ export default class Responder {
     public handlerManager: Map<string, Handler> = new Map();
 
     /**
-     * 名称
-     */
-    private readonly namespace: string;
-
-    constructor(namespace: string) {
-        this.namespace = namespace;
-    }
-
-    /**
      * 插入
      * @param action
      * @param callback
      */
-    public createHandler(action: string, callback: IHandler | string) {
+    public createHandler(action: string, namespace: string, callback: IHandler | string) {
         // 有callback说明是服务端的，服务端的优先级高
         if (this.hasHandlerCallback(action)) {
             return;
@@ -43,7 +34,7 @@ export default class Responder {
         }
 
         // 新建处理
-        const handler = new Handler(this.namespace, action);
+        const handler = new Handler(namespace, action);
 
         // 函数回调，主要是本地处理
         if (isFunction(callback) && typeof callback === 'function') {
@@ -123,9 +114,15 @@ export default class Responder {
     }
 
     /**
-     * 所有动作
+     * 返回本地动作
      */
-    public toHandlerEvents() {
-        return Array.from(this.handlerManager.keys());
+    public toLocalEvents() {
+        const events: string[] = [];
+        this.handlerManager.forEach((handler, key) => {
+            if (handler.callback) {
+                events.push(key);
+            }
+        });
+        return events;
     }
 }
