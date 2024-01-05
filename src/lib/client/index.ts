@@ -387,7 +387,7 @@ export default class Client extends EventEmitter<IClientEvent> {
                     this.$error('[heartbeat]', error);
                     this.$emit('error', error);
                 } else {
-                    this.$success('[heartbeat]', content);
+                    this.$debug('[heartbeat]', content);
                     this.$emit('heartbeat', content);
                     this.heartbeat();
                 }

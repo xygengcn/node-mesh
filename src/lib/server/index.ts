@@ -86,6 +86,9 @@ export type IServerEvent = {
     // 客户端下线
     clientOffline: (connection: Connection) => void;
 
+    // 错误事件
+    clientError: (e: Error) => void;
+
     // 通知消息
     notification: (message: Message<INotifictionMessage>) => void;
 
@@ -227,9 +230,11 @@ export default class Server extends EventEmitter<IServerEvent> {
 
             // 下线了
             socket.$on('offline', () => {
-                this.$warn('[client-offline]', remoteId, socket.status);
+                this.$warn('[client-offline]', remoteId);
                 const connecttion = this.connectionManager.findConnectionById(remoteId);
-                this.$emit('clientOffline', connecttion);
+                if (connecttion && socket?.status === SocketStatus.offline) {
+                    this.$emit('clientOffline', connecttion);
+                }
             });
 
             /**
@@ -238,11 +243,13 @@ export default class Server extends EventEmitter<IServerEvent> {
              * 1、客户端自己断开不会回调，服务端自助断开会触发
              */
             socket.$once('close', () => {
-                this.$warn('[client-close]', socket.remoteId());
+                this.$warn('[client-close]', remoteId);
+                if (socket?.status !== SocketStatus.offline) {
+                    const connecttion = this.connectionManager.findConnectionById(remoteId);
+                    this.$emit('clientOffline', connecttion);
+                }
                 // 清理客户端所有数据
                 this.offline(remoteId);
-                remoteId = null;
-                socket = null;
             });
 
             /**
@@ -261,7 +268,7 @@ export default class Server extends EventEmitter<IServerEvent> {
             // 错误
             socket.$on('error', (error) => {
                 this.$error('[client-error]', error);
-                this.$emit('error', error);
+                this.$emit('clientError', error);
                 socket.clearBindSetTimeout();
             });
 

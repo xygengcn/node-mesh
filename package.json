@@ -1,6 +1,6 @@
 {
     "name": "node-mesh",
-    "version": "2.0.13",
+    "version": "2.0.15",
     "description": "Master - Branch 形式 Nodejs 微服务框架",
     "types": "dist/index.d.ts",
     "main": "dist/index.js",
