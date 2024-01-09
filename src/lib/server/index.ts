@@ -218,8 +218,8 @@ export default class Server extends EventEmitter<IServerEvent> {
             socket.$on('online', () => {
                 socket.updateStatus(SocketStatus.online);
                 socket.clearBindSetTimeout();
-                this.$success('[client-online]', remoteId);
                 const connecttion = this.connectionManager.findConnectionById(remoteId);
+                this.$success('[client-online]', remoteId, !!connecttion);
                 this.$emit('clientOnline', connecttion);
 
                 // 日志
@@ -230,8 +230,8 @@ export default class Server extends EventEmitter<IServerEvent> {
 
             // 下线了
             socket.$on('offline', () => {
-                this.$warn('[client-offline]', remoteId);
                 const connecttion = this.connectionManager.findConnectionById(remoteId);
+                this.$warn('[client-offline]', remoteId, !!connection);
                 if (connecttion && socket?.status === SocketStatus.offline) {
                     this.$emit('clientOffline', connecttion);
                 }
@@ -242,10 +242,10 @@ export default class Server extends EventEmitter<IServerEvent> {
              *
              * 1、客户端自己断开不会回调，服务端自助断开会触发
              */
-            socket.$once('close', () => {
-                this.$warn('[client-close]', remoteId);
-                if (socket?.status !== SocketStatus.offline) {
-                    const connecttion = this.connectionManager.findConnectionById(remoteId);
+            socket.$on('close', () => {
+                const connecttion = this.connectionManager.findConnectionById(remoteId);
+                this.$warn('[client-close]', remoteId, socket?.status, !!connecttion);
+                if (socket?.status !== SocketStatus.offline && connecttion) {
                     this.$emit('clientOffline', connecttion);
                 }
                 // 清理客户端所有数据
@@ -257,9 +257,9 @@ export default class Server extends EventEmitter<IServerEvent> {
              * 结束
              * 1、客户端自己断开会回调，服务端自助断开会触发
              */
-            socket.$once('end', () => {
+            socket.$on('end', () => {
                 socket.clearBindSetTimeout();
-                this.$warn('[client-end]', socket.remoteId());
+                this.$warn('[client-end]', socket.status, socket.remoteId());
                 setImmediate(() => {
                     socket.$end();
                 });

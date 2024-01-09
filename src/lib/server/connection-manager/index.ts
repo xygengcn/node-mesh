@@ -166,15 +166,16 @@ export default class ConnectionManager {
      * 下线用户
      * @param remoteId
      */
-    public offline(remoteId: string) {
+    public async offline(remoteId: string) {
         const connection = this.findConnectionById(remoteId);
         // 移除订阅绑定
         this.subscribeBindIdManager.forEach((sub) => {
             sub.delete(remoteId);
         });
-
         // 关闭连接
-        connection?.close();
+        if (connection) {
+            await connection.close();
+        }
         this.idBindConnectionManager.delete(remoteId);
     }
 

@@ -5,7 +5,7 @@ import assert from 'assert';
 import { describe, it } from 'mocha';
 
 const client1 = new Client({ port: 4001, namespace: 'client1' });
-const server = new Server({ port: 4001, namespace: 'client1' });
+const server = new Server({ port: 4001, namespace: 'server1' });
 
 describe('正常测试socket连接事件', () => {
     after(() => {
@@ -78,5 +78,48 @@ describe('测试socket重新连接事件', () => {
         client1.options.port = 4002;
         client1.createSocket();
         client1.connect();
+    });
+});
+
+describe('测试socket断开事件', () => {
+    after(() => {
+        client1.disconnect();
+        server.$off();
+        client1.$off();
+        server.disconnect();
+    });
+    afterEach(() => {
+        server.$off();
+    });
+    it('服务端断开客户端', (done) => {
+        let remoteId = null;
+        server.$on('clientOnline', (c) => {
+            assert.ok('ok');
+            remoteId = c.id;
+        });
+        server.$on('clientOffline', () => {
+            done();
+        });
+        server.createSocket();
+        server.connect();
+        client1.createSocket();
+        client1.connect();
+        setTimeout(() => {
+            server.offline(remoteId);
+        }, 1000);
+    });
+
+    it('客户端自己断开', (done) => {
+        server.$on('clientOffline', () => {
+            assert.ok('ok');
+            done();
+        });
+        server.createSocket();
+        server.connect();
+        client1.createSocket();
+        client1.connect();
+        setTimeout(() => {
+            client1.disconnect();
+        }, 1000);
     });
 });
