@@ -27,7 +27,8 @@ export enum MessageSysAction {
     bindAuth = 'action:bindAuth', // 绑定事件
     connected = 'action:connected', // 客户端本地连接事件
     register = 'action:register', // 客户端注册请求方法和订阅信息
-    heartbeat = 'action:heartbeat' // 心跳事件
+    heartbeat = 'action:heartbeat', // 心跳事件
+    disconnect = 'action:disconnect' // 通知客户端主动断开事件
 }
 /**
  * 消息

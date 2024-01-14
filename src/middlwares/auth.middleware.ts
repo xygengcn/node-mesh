@@ -1,6 +1,6 @@
 import { Inject, Middleware } from '@/decorator';
 import CustomError, { CustomErrorCode } from '@/error';
-import { Message, MessageSysAction, isRequestMessage, isSysMessage } from '@/lib/message';
+import { Message, MessageSource, MessageSysAction, MessageType, isRequestMessage, isSysMessage } from '@/lib/message';
 import type Server from '@/lib/server';
 import { type Transport } from '@/lib/transport';
 import { MiddlewareClass, MiddlewareParamKey } from '../lib/middleware/index';
@@ -41,6 +41,17 @@ export default class AuthMiddleware implements MiddlewareClass {
 
             // 服务端有权限校验且校验通过，
             if ((serverAuth && serverAuth === clientAuth) || !serverAuth) {
+                const connection = server.connectionManager.findConnectionByName(namespace);
+                if (connection) {
+                    server.$warn('[client-bind] name重复:', connection.name, connection.id);
+                    const message = new Message();
+                    message.setSource(MessageSource.system);
+                    message.setType(MessageType.notification);
+                    message.setAction(MessageSysAction.disconnect);
+                    message.setError(Error('ERR_NAME_EXIST'));
+                    connection.transport.send(message);
+                    connection.close();
+                }
                 server.connectionManager.bindName(namespace, remoteId);
                 // 绑定客户端事件
                 server.bindConnectionEvents(remoteId, responderEvents || [], subscribeEvents || []);

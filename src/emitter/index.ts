@@ -117,9 +117,9 @@ export class EventEmitter<K extends Record<string, any> = {}> implements EventEm
      * @param title
      * @param args
      */
-    public $error(title: string, errorMsg?: Error) {
+    public $error(title: string, errorMsg?: Error, ...args: any[]) {
         if (!this.isValidLevel('error')) return this;
-        this.$emit('emitter:logger', 'error', title, errorMsg);
+        this.$emit('emitter:logger', 'error', title, errorMsg, ...args);
     }
 
     /**

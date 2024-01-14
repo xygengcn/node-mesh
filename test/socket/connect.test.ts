@@ -5,6 +5,8 @@ import assert from 'assert';
 import { describe, it } from 'mocha';
 
 const client1 = new Client({ port: 4001, namespace: 'client1' });
+const client2 = new Client({ port: 4001, namespace: 'client1', retryDelay: 50 });
+
 const server = new Server({ port: 4001, namespace: 'server1' });
 
 describe('正常测试socket连接事件', () => {
@@ -120,6 +122,38 @@ describe('测试socket断开事件', () => {
         client1.connect();
         setTimeout(() => {
             client1.disconnect();
+        }, 1000);
+    });
+});
+
+describe('重复连接事件', () => {
+    after(() => {
+        client1.disconnect();
+        client1.$off();
+        client2.disconnect();
+        client2.$off();
+        server.$off();
+        server.disconnect();
+    });
+    it('客户端重复连接，前者断开', (done) => {
+        server.$on('clientOffline', (c) => {
+            if (c.id === client1.socket.localId()) {
+                assert.ok('clientOffline');
+                setTimeout(() => {
+                    done();
+                }, 1000);
+            }
+        });
+        client1.$on('reconnect', () => {
+            done(Error('reconnect'));
+        });
+        server.createSocket();
+        server.connect();
+        client1.createSocket();
+        client1.connect();
+        setTimeout(() => {
+            client2.createSocket();
+            client2.connect();
         }, 1000);
     });
 });

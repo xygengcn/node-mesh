@@ -31,6 +31,12 @@ const branch2 = new Branch<typeof actions & typeof actions2>('branch2', { port: 
 
 const branchReq2 = branch2.createRequester();
 
+master1.connect();
+
+branch1.connect();
+
+branch2.connect();
+
 describe('客户端和服务端的通信测试', () => {
     after(() => {
         branch1.disconnect();

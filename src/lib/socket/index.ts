@@ -117,7 +117,7 @@ export default class Socket extends net.Socket {
         // 开始计时
         this.bindSetTimeout = setTimeout(() => {
             this.$emit('error', new CustomError(CustomErrorCode.bindTimeout, this.remoteId()));
-            this.$end(true);
+            this.$end();
         }, 2000);
     }
 
@@ -223,7 +223,7 @@ export default class Socket extends net.Socket {
     // [server] [warn] [client-offline] IPv4://127.0.0.1:57455 offline
     // [server] [warn] [client-close] IPv4://127.0.0.1:57455
 
-    public $end(unref: boolean = true) {
+    public $end() {
         if (this.status !== SocketStatus.offline) {
             // 清除绑定定时器
             this.clearBindSetTimeout();
@@ -235,7 +235,6 @@ export default class Socket extends net.Socket {
             this.writeStream.destroy();
 
             return new Promise((resolve) => {
-                // 结束连接
                 this.end(() => {
                     // 更新状态
                     this.updateStatus(SocketStatus.offline);
@@ -244,7 +243,7 @@ export default class Socket extends net.Socket {
                     // 清除监听
                     this.removeAllListeners();
                     // 移除所有连接
-                    unref && this.unref();
+                    this.unref();
                     resolve(this.status);
                 });
             });

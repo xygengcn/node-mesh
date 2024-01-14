@@ -175,6 +175,7 @@ export class Transport {
      * 发送消息
      */
     public send(...messages: Message[]): void {
+        if (messages.length === 0) return;
         if (this.sender?.socket.readyState === 'open') {
             if (this.sender?.socket?.status === SocketStatus.online) {
                 this.sender.send(...messages);

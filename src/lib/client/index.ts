@@ -16,6 +16,7 @@ import { IHandler } from '../responder/handler';
 import Socket from '../socket';
 import { IHeartbeatOptions, Transport } from '../transport';
 import NotificationMiddleware from '@/middlwares/notification.middleware';
+import DisconnectMiddleware from '@/middlwares/disconnect.middleware';
 
 /**
  * 配置
@@ -127,7 +128,7 @@ export default class Client extends EventEmitter<IClientEvent> {
             });
         }
         // 内置中间件,先执行前面的
-        this.use(SubscribeMiddleware, NotificationMiddleware, RequestMiddleware, BindMiddleware);
+        this.use(SubscribeMiddleware, NotificationMiddleware, RequestMiddleware, BindMiddleware, DisconnectMiddleware);
     }
 
     /**
@@ -272,7 +273,7 @@ export default class Client extends EventEmitter<IClientEvent> {
     public createSocket() {
         // 正在请求
 
-        this.$debug('[create]');
+        this.$debug('[create] options', this.options);
 
         // 初始
         this.socket = new Socket();
@@ -321,7 +322,7 @@ export default class Client extends EventEmitter<IClientEvent> {
          * 3、发生了错误，导致连接异常关闭。
          */
         this.socket.$once('close', (hadError) => {
-            this.$warn('[close]', hadError);
+            this.$warn('[close]', hadError, this.socket.localId());
             // 下线
             this.disconnect(hadError);
         });
@@ -337,13 +338,13 @@ export default class Client extends EventEmitter<IClientEvent> {
          * 自己disconnect不会触发
          */
         this.socket.$once('end', () => {
-            this.$warn('[end]');
+            this.$warn('[end]', this.socket.localId());
             // 收到服务端断开
             this.disconnect(true);
         });
 
         this.socket.$on('offline', () => {
-            this.$warn('[offline]');
+            this.$warn('[offline]', this.socket.localId());
             this.$emit('offline');
         });
 
@@ -351,7 +352,7 @@ export default class Client extends EventEmitter<IClientEvent> {
         this.socket.$on('online', () => {
             this.socket.updateStatus(SocketStatus.online);
             // 日志
-            this.$success('[online]');
+            this.$success('[online]', this.socket.localId());
             this.$emit('online');
 
             // 触发心跳
@@ -361,7 +362,7 @@ export default class Client extends EventEmitter<IClientEvent> {
         // 有错误发生调用的事件
         this.socket.$on('error', (e: Error) => {
             // 日志
-            this.$error('[error]', e);
+            this.$error('[connect-error]', e);
             this.$emit('error', e);
         });
 
@@ -400,10 +401,14 @@ export default class Client extends EventEmitter<IClientEvent> {
      */
     public connect(): this {
         // 在线不需要连接
-        if (this.socket?.status === SocketStatus.online) {
+        if (
+            this.socket?.status === SocketStatus.online ||
+            this.socket?.status === SocketStatus.pending ||
+            this.socket?.status === SocketStatus.binding ||
+            this.socket?.status === SocketStatus.connected
+        ) {
             return this;
         }
-
         // 正在请求
         this.socket.updateStatus(SocketStatus.pending);
 
@@ -470,7 +475,7 @@ export default class Client extends EventEmitter<IClientEvent> {
      * server.end() 方法用于优雅地关闭服务器，让所有连接有机会完成它们的操作，而 server.destroy() 方法用于强制关闭服务器，可能导致未处理的数据丢失。
      */
     public disconnect(reconnect: boolean = false) {
-        this.$warn('[disconnect]', reconnect);
+        this.$warn('[disconnect]', reconnect, this.socket.localId());
         this.clearReconnectTimeout();
         // 结束连接
         return this.transport?.$destroy().then(() => {

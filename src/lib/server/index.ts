@@ -267,7 +267,7 @@ export default class Server extends EventEmitter<IServerEvent> {
 
             // 错误
             socket.$on('error', (error) => {
-                this.$error('[client-error]', error);
+                this.$error('[client-error]', error, { remoteId, name: socket.name });
                 this.$emit('clientError', error);
                 socket.clearBindSetTimeout();
             });

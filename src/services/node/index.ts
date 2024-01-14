@@ -46,10 +46,6 @@ export default class Node<NodeResponder extends NodeAction, Type extends NodeTyp
     // 构建分支
     constructor(type: Type, options: NodeOptions<Type>) {
         this.socket = createNodeFactory(type, options);
-        setImmediate(() => {
-            this.socket.createSocket();
-            this.socket.connect();
-        });
     }
 
     /**
@@ -180,6 +176,14 @@ export default class Node<NodeResponder extends NodeAction, Type extends NodeTyp
      */
     public use(middleware: Constructor | MiddlewareFunction) {
         return this.socket.use(middleware);
+    }
+
+    /**
+     * 建立连接
+     */
+    public connect() {
+        this.socket.createSocket();
+        this.socket.connect();
     }
 
     /**

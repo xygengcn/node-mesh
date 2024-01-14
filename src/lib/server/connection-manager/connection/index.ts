@@ -34,7 +34,7 @@ export default class Connection {
      * 1、有重复的id出现
      */
     public async close() {
-        await this.transport?.$destroy(true);
+        await this.transport?.$destroy();
         this.transport = null;
         this.socket = null;
     }

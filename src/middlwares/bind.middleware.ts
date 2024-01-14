@@ -42,7 +42,7 @@ export default class BindMiddleware implements MiddlewareClass {
                 const subscriberName = client.transport.subscriber.toEventNames();
 
                 // 添加参数
-                message.setParams(client.options.namespace, client.options.auth, responderName, subscriberName);
+                message.setParams(client.options.namespace, client.options.auth || '', responderName, subscriberName);
 
                 // 添加动作
                 message.setAction(MessageSysAction.bindAuth);
